@@ -32,6 +32,22 @@ class DataFetcher:
             _from=self.start_date,
             to=self.end_date
         )
+    
+    def get_sec_filings(self) -> List[Dict[str, Any]]:
+        """Fetches SEC filings."""
+        return self.finnhub_client.filings(
+            symbol=self.ticker, 
+            _from=self.start_date,
+            to=self.end_date
+        )
+    
+    def get_insider_transactions(self) -> List[Dict[str, Any]]:
+        """Fetches insider transactions."""
+        return self.finnhub_client.stock_insider_transactions(
+            symbol=self.ticker, 
+            _from=self.start_date,
+            to=self.end_date
+        )
 
 # Test
 try:
