@@ -1,0 +1,7 @@
+# Project dependencies
+pysimplegui
+plotly
+pandas
+yfinance
+finnhub-python
+pywebview
