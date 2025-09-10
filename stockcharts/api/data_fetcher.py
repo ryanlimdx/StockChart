@@ -2,6 +2,8 @@
 
 import os
 import finnhub
+import yfinance as yf
+import pandas as pd
 from utils import date_utils
 from dotenv import load_dotenv
 from typing import Dict, Any, List
@@ -25,6 +27,17 @@ class DataFetcher:
         # APIs
         self.finnhub_client = finnhub.Client(api_key=FINNHUB_API_KEY)
 
+    # yfinance
+    def get_price_history(self) -> pd.DataFrame:
+        """Fetches the last 3 months of daily stock prices using yFinance."""
+        stock = yf.Ticker(self.ticker)
+        history = stock.history(
+            start=date_utils.backdate(past_days_ago=91), # as yf end date is exclusive.
+            end=self.end_date
+        )
+        return history
+
+    # finnhub
     def get_company_news(self) -> List[Dict[str, Any]]:
         """Fetches company news within the date range."""
         return self.finnhub_client.company_news(
@@ -53,6 +66,7 @@ class DataFetcher:
 try:
     fetcher = DataFetcher()
     news_data = fetcher.get_company_news()
+    price_data = fetcher.get_price_history()
 
     print(f"Fetched {len(news_data)} news articles.")
     if news_data:
@@ -64,8 +78,13 @@ try:
             print("-" * 20)
     else:
         print("No news articles found.")
+
+    print("--- Stock Price History ---")
+    print("\n--- First 5 Rows ---")
+    print(price_data.head())
         
 except ValueError as e:
     print(f"Error: {e}")
 except Exception as e:
     print(f"An unexpected error occurred: {e}")
+
