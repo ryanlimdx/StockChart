@@ -1,8 +1,8 @@
 # Project dependencies
-pysimplegui
+dash
+dash-bootstrap-components
 plotly
 pandas
 yfinance
 finnhub-python
-pywebview
 python-dotenv
