@@ -7,6 +7,9 @@ import pandas as pd
 import requests
 from dotenv import load_dotenv
 from typing import Dict, Any, List
+from concurrent.futures import ThreadPoolExecutor, Future
+
+from ..utils import date_utils
 
 from stockcharts.utils import date_utils
 
@@ -31,8 +34,20 @@ class DataFetcher:
         # APIs
         self.finnhub_client = finnhub.Client(api_key=FINNHUB_API_KEY)
 
+    def fetch_data_async(self) -> Dict[str, Future]:
+        """Submits data fetching tasks to a thread pool."""
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            futures = {
+                'price': executor.submit(self._get_price_history),
+                'macro_news': executor.submit(self._get_macro_news),
+                'company_news': executor.submit(self._get_company_news),
+                'filings': executor.submit(self._get_sec_filings),
+                'insider_transactions': executor.submit(self._get_insider_transactions)
+            }
+        return futures
+
     # yfinance
-    def get_price_history(self) -> pd.DataFrame:
+    def _get_price_history(self) -> pd.DataFrame:
         """Fetches the last 3 months of daily stock prices."""
         try:
             stock = yf.Ticker(self.ticker)
@@ -46,7 +61,7 @@ class DataFetcher:
             return pd.DataFrame(columns=['Open', 'High', 'Low', 'Close', 'Volume', 'Dividends', 'Stock Splits'])
     
     # Alpha Vantage
-    def get_macro_news(self) -> Dict[str, Any]:
+    def _get_macro_news(self) -> Dict[str, Any]:
         """Fetches macro news."""
         url = (
             f"https://www.alphavantage.co/query?"
@@ -66,7 +81,7 @@ class DataFetcher:
             return {}
 
     # Finnhub
-    def get_company_news(self) -> List[Dict[str, Any]]:
+    def _get_company_news(self) -> List[Dict[str, Any]]:
         """Fetches company news."""
         try:
             return self.finnhub_client.company_news(
@@ -78,7 +93,7 @@ class DataFetcher:
             print(f"Error fetching Finnhub company news: {e}")
             return []
     
-    def get_sec_filings(self) -> List[Dict[str, Any]]:
+    def _get_sec_filings(self) -> List[Dict[str, Any]]:
         """Fetches SEC filings."""
         try: 
             return self.finnhub_client.filings(
@@ -90,7 +105,7 @@ class DataFetcher:
             print(f"Error fetching Finnhub SEC filings: {e}")
             return []
     
-    def get_insider_transactions(self) -> List[Dict[str, Any]]:
+    def _get_insider_transactions(self) -> List[Dict[str, Any]]:
         """Fetches insider transactions."""
         try:
             return self.finnhub_client.stock_insider_transactions(
@@ -101,42 +116,40 @@ class DataFetcher:
         except Exception as e:
             print(f"Error fetching Finnhub insider transactions: {e}")
             return []
+        
+    def test():
+        try:
+            fetcher = DataFetcher()
+            macro_data = fetcher._get_macro_news()
+            news_data = fetcher._get_company_news()
+            price_data = fetcher._get_price_history()
 
+            if macro_data and 'feed' in macro_data and macro_data['feed']:
+                print("\n--- First 5 Macro News Headlines ---")
+                for article in macro_data['feed'][:5]:
+                    print(f"Headline: {article.get('title', 'No Title')}")
+                    print(f"Source: {article.get('source', 'N/A')}")
+                    print(f"URL: {article.get('url', 'N/A')}")
+                    print("-" * 20)
+            else:
+                    print("No macro news articles found or an error occurred.")
 
-if __name__ == '__main__':
-    try:
-        fetcher = DataFetcher()
-        macro_data = fetcher.get_macro_news()
-        news_data = fetcher.get_company_news()
-        price_data = fetcher.get_price_history()
+            print(f"Fetched {len(news_data)} news articles.")
+            if news_data:
+                print("\n--- First 3 News Articles ---")
+                for article in news_data[:3]:
+                    print(f"Headline: {article.get('headline', 'N/A')}")
+                    print(f"Source: {article.get('source', 'N/A')}")
+                    print(f"URL: {article.get('url', 'N/A')}")
+                    print("-" * 20)
+            else:
+                print("No news articles found.")
 
-        if macro_data and 'feed' in macro_data and macro_data['feed']:
-            print("\n--- First 5 Macro News Headlines ---")
-            for article in macro_data['feed'][:5]:
-                print(f"Headline: {article.get('title', 'No Title')}")
-                print(f"Source: {article.get('source', 'N/A')}")
-                print(f"URL: {article.get('url', 'N/A')}")
-                print("-" * 20)
-        else:
-                print("No macro news articles found or an error occurred.")
-
-        print(f"Fetched {len(news_data)} news articles.")
-        if news_data:
-            print("\n--- First 3 News Articles ---")
-            for article in news_data[:3]:
-                print(f"Headline: {article.get('headline', 'N/A')}")
-                print(f"Source: {article.get('source', 'N/A')}")
-                print(f"URL: {article.get('url', 'N/A')}")
-                print("-" * 20)
-        else:
-            print("No news articles found.")
-
-        print("--- Stock Price History ---")
-        print("\n--- First 5 Rows ---")
-        print(price_data.head())
-            
-    except ValueError as e:
-        print(f"Error: {e}")
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
-
+            print("--- Stock Price History ---")
+            print("\n--- First 5 Rows ---")
+            print(price_data.head())
+                
+        except ValueError as e:
+            print(f"Error: {e}")
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
