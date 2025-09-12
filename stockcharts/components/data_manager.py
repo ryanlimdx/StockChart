@@ -21,7 +21,6 @@ class DataManager:
                 price = future.result()
                 continue
             events[key] = future.result()
-        print(price.head())
         return price, events
 
     def process_events(self, events: Dict[str, Any]) -> Generator[Dict[str, Any], None, None]:

@@ -22,9 +22,14 @@ class ChartBuilder:
 
         fig.update_layout(
             title=f"NVDA Stock Price (Last 3 Months)",
-            yaxis_title="Price (USD)", xaxis_rangeslider_visible=False,
+            xaxis_rangeslider_visible=False,
             plot_bgcolor='#111111', paper_bgcolor='#111111',
-            font_color='white', margin=dict(l=20, r=20, t=40, b=20)
+            font_color='white', margin=dict(l=20, r=20, t=40, b=20),
+            xaxis=dict(gridcolor='#444444', visible=False),
+            yaxis=dict(gridcolor='#444444', title='Price (USD)', side='right'),
+
+            hovermode='x',
+
         )
-        
+
         return fig

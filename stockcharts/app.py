@@ -1,6 +1,7 @@
 import dash
 from dash import dcc, html, Input, Output, State, ctx
 import dash_bootstrap_components as dbc
+import os
 import plotly.graph_objects as go
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -24,46 +25,74 @@ class StockChartApp:
             
             dbc.Row([
                 dbc.Col([
-                    html.H3(id='app-name', children="StockChart"),
-                    dcc.Loading(
-                        type="circle",
-                        children=dcc.Graph(id='stock-chart', style={'height': '90vh'})
-                    )
-                ], width=9),
-                dbc.Col([
-                    dbc.Button(
-                        "X", id='close-info-button', color="secondary", size="sm",
-                        className="position-absolute top-0 end-0 m-2",
-                        style={'display': 'none'}
+                    dbc.Card(
+                        dbc.CardBody(
+                            [
+                                html.H3(id='app-name', children="StockChart")
+                            ]
+                        ), className="mb-4 rounded-4"
                     ),
-                    html.H3(id='info-date'),
-                    dcc.Loading(
-                        type="circle",
-                        # This is now the container for the event cards
-                        children=html.Div(id='info-content')
-                    )
-                ], width=3, className="position-relative"),
+                    dbc.Card(
+                        dbc.CardBody(
+                            [
+                                dcc.Loading(
+                                    type="circle",
+                                    children=dcc.Graph(id='stock-chart', style={'height': '90vh'})
+                                )
+                            ],
+                        ), className="rounded-4", style={'background-color': '#111111'}
+                    ),
+                    
+                ], width=9),
+                dbc.Col(
+                    dbc.Card(
+                        dbc.CardBody([
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        html.H3(id='info-date', className="mb-5")
+                                    ),
+                                    dbc.Col(
+                                        dbc.Button(
+                                            "X", id='close-info-button', color="secondary", size="sm",
+                                            className="ms-auto", style={'display': 'none'}
+                                        ),
+                                    ),
+                                ],
+                                className="d-flex align-items-center justify-content-between"
+                            ),
+                            dcc.Loading(
+                                type="circle",
+                                children=html.Div(id='info-content')
+                            )
+                        ]),
+                        className="rounded-4", style={'height': '100vh'}
+                    ),
+                    width=3,  className="position-relative"
+                ),
             ])
         ], fluid=True, className="p-4")
 
     def _create_event_cards(self, events):
         """Creates a list of Card components for events."""
-        if not events:
-            return dbc.Card(
-                dbc.CardBody([
-                    html.H5("No news for this day.", className="card-title")
-                ]),
-                className="mb-3"
-            )
-        
         event_cards = []
+        if not events:
+            card =dbc.Card(
+                dbc.CardBody([
+                    html.P("All caught up!", className="card-text")
+                ]),
+                className="mb-3 rounded-4 bg-secondary"
+            )
+            event_cards.append(card)
+            return event_cards
+        
         for event in events:
             card = dbc.Card(
                 dbc.CardBody([
                     html.H5(f"Time: {event['time']}", className="card-title"),
                     html.P(f"Content: {event['content']}", className="card-text")
                 ]),
-                className="mb-3"
+                className="mb-3 rounded-4 bg-secondary"
             )
             event_cards.append(card)
         return event_cards
