@@ -1,4 +1,4 @@
-from typing import Dict, Any, List, Generator
+from typing import Dict, Any, Generator
 from stockcharts.api.data_fetcher import DataFetcher
 from stockcharts.utils import date_utils
 

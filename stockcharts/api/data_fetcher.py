@@ -67,7 +67,7 @@ class DataFetcher:
             f"https://www.alphavantage.co/query?"
             f"function=NEWS_SENTIMENT&"
             f"topics=economy_macro&"
-            f"time_from={date_utils.get_date_time(self.start_date)}&"
+            f"time_from={date_utils.get_ISO_date_time(self.start_date)}&"
             f"apikey={ALPHA_VANTAGE_API_KEY}"
         )
 
