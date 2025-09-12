@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 
 STANDARD_DATE_FORMAT = '%Y-%m-%d' # 'YYYY-MM-DD'
-DISPLAY_DATE_FORMAT = '%d %m %Y, %a'
+DISPLAY_DATE_FORMAT = '%b %d, %Y - %a' 
 DISPLAY_TIME_FORMAT = '%H:%M'
 
 ISO_DATETIME_FORMAT = '%Y%m%dT%H%M' # 'YYYYMMDDTHHMM'
@@ -19,7 +19,7 @@ def backdate(past_days_ago: int) -> str:
 # Datetime formatting   #
 #########################
 
-def get_date(date_obj: datetime) -> str:
+def get_date(date_obj: datetime = now()) -> str:
     return date_obj.strftime(STANDARD_DATE_FORMAT)
 
 def get_ISO_date_time(date_obj: datetime) -> str:
