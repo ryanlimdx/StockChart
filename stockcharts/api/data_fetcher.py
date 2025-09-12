@@ -11,6 +11,8 @@ from concurrent.futures import ThreadPoolExecutor, Future
 
 from ..utils import date_utils
 
+from stockcharts.utils import date_utils
+
 try: 
     load_dotenv()
     FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY")
