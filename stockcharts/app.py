@@ -1,11 +1,11 @@
 import dash
-from dash import dcc, html
-from dash.dependencies import Input, Output, State
+from dash import dcc, html, Input, Output, State, ctx
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from stockcharts.utils import date_utils
 from stockcharts.components.chart import ChartBuilder
 from stockcharts.components.data_manager import DataManager
 
@@ -20,46 +20,34 @@ class StockChartApp:
 
     def _setup_layout(self):
         self.app.layout = dbc.Container([
-            dcc.Store(id='raw-data-store'),
-            dcc.Store(id='generator-store'),
+            dcc.Store(id='event-data-store'),
             
             dbc.Row([
                 dbc.Col([
-                    html.H3(id='app-name', children=f"{self.ticker} Stock Chart", style={'height': '10vh'}),
-                    html.Div(id='chart-container', children=[
-                        # Loading spinner and placeholder
-                        html.Div(
-                            id='loading-div',
-                            children=[
-                                dcc.Loading(
-                                    type="circle",
-                                    children=html.Div(id="loading-output", children=html.P("Loading data..."))
-                                )
-                            ],
-                            style={'display': 'block'}
-                        ),
-                        # Chart component
-                        dcc.Graph(id='stock-chart', figure=go.Figure(), style={'display': 'none', 'height': '90vh'})
-                    ]),
+                    html.H3(id='app-name', children=f"{self.ticker} Stock Chart"),
+                    dcc.Loading(
+                        type="circle",
+                        children=dcc.Graph(id='stock-chart', style={'height': '90vh'})
+                    )
                 ], width=9),
                 dbc.Col([
-                    html.H3(children="Information", style={'height': '10vh'}),
+                    dbc.Button(
+                        "X", id='close-info-button', color="secondary", size="sm",
+                        className="position-absolute top-0 end-0 m-2",
+                        style={'display': 'none'}
+                    ),
+                    html.H3(id='info-date'),
                     html.Hr(),
-                    html.P(id='info-content', children="Content will appear here.", style={'whiteSpace': 'pre-wrap'}),
-                    html.Div(id='processing-spinner', style={'display': 'none'}, children=[
-                        dcc.Loading(type="circle", children=html.Div(html.P("Processing events...")))
-                    ])
-                ], width=3),
+                    html.P(id='info-content', style={'whiteSpace': 'pre-wrap'})
+                ], width=3, className="position-relative"),
             ])
         ], fluid=True, className="p-4")
 
     def _setup_callbacks(self):
         @self.app.callback(
             [
-                Output('loading-div', 'style'), 
-                Output('stock-chart', 'style'), 
                 Output('stock-chart', 'figure'), 
-                Output('raw-data-store', 'data')
+                Output('event-data-store', 'data')
             ],
             [Input('app-name', 'n_clicks')]
         )
@@ -69,39 +57,71 @@ class StockChartApp:
             It is a one-time, blocking operation.
             """
             price, events = self.data_manager.fetch_raw_data()
+            processed_events = list(self.data_manager.process_events(events=events))
             chart_builder = ChartBuilder(price)
             fig = chart_builder.create_figure()
 
-            return {'display': 'none'}, {'display': 'block', 'height': '90vh'}, fig, events
+            return fig, processed_events
+
 
         @self.app.callback(
             [
+                Output('info-date', 'children'),
                 Output('info-content', 'children'), 
-                Output('processing-spinner', 'style')
+                Output('close-info-button', 'style')
             ],
-            [Input('raw-data-store', 'data')]
+            [Input('event-data-store', 'data')]
         )
-        def process_and_display_todays_events(raw_data):
-            """ This callback is triggered when raw-data-store's data property is updated."""
-            if not raw_data:
-                return "Waiting for data...", {'display': 'block'}
-
-            event_gen = self.data_manager.todays_events(raw_data)
-            todays_events = list(event_gen)
-            
-            if len(todays_events) > 5:
-                sorted_events = sorted(todays_events, key=lambda x: int(x['importance_rank']), reverse=True)
-                todays_events = sorted_events[:5]
-
+        def process_and_display_todays_events(event_data):
+            """ This callback is triggered when event-data-store is updated."""
+            if not event_data:
+                return "Today", "Waiting for data...", {'display': 'block'}
+            todays_events = self.data_manager.day_events(events=event_data)            
             output_string = ""
             for event in todays_events:
-                output_string += f"Date: {event['date']}\n"
-                output_string += f"Type: {event['type']}\n"
-                output_string += f"Content: {event['content']}\n"
-                output_string += "-" * 20 + "\n"
+                output_string += f"Time: {event['time']}\nContent: {event['content']}\n" + "-"*20 + "\n"
 
-            # Return the final string and stop the spinner
-            return output_string, {'display': 'none'}
+            return "Today", output_string or "No news for today.", {'display': 'none'}
+        
+        @self.app.callback(
+            Output('info-date', 'children', allow_duplicate=True),
+            Output('info-content', 'children', allow_duplicate=True),
+            Output('close-info-button', 'style', allow_duplicate=True),
+            Input('stock-chart', 'clickData'),
+            Input('close-info-button', 'n_clicks'),
+            State('event-data-store', 'data'),
+            prevent_initial_call=True
+        )
+        def update_info_panel(clickData, close_clicks, all_events):
+            """
+            This callback is triggered by a chart click OR a close button click.
+            """
+            triggered_id = ctx.triggered_id
+
+            # View for a specific day: when the chart is clicked
+            if triggered_id == 'stock-chart' and clickData:
+                clicked_date = clickData['points'][0]['x']
+                clicked_date = date_utils.get_date(clicked_date)
+                
+                if all_events is None:
+                    return f"{clicked_date}", "Loading...", {'display': 'block'}
+                
+                events_on_date = self.data_manager.day_events(events=all_events, date=clicked_date)                
+                output_string = ""
+                for event in events_on_date:
+                    output_string += f"Time: {event['time']}\nContent: {event['content']}\n" + "-"*20 + "\n"
+                
+                return f"{clicked_date}", output_string or "No news for this day.", {'display': 'block'}
+            
+            # View for when the close button is clicked
+            if triggered_id == 'close-info-button':
+                todays_events = self.data_manager.day_events(all_events)                
+                output_string = ""
+                for event in todays_events:
+                    output_string += f"Time: {event['time']}\nContent: {event['content']}\n" + "-"*20 + "\n"
+                
+                return "Today", output_string or "No news for today.", {'display': 'none'}
+
 
 
     def run(self, debug=True):
