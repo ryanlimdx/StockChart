@@ -27,7 +27,6 @@ class DataManager:
     def process_events(self, events: Dict[str, Any]) -> Generator[Dict[str, Any], None, None]:
         """Performs data transformation one by one, to conform to a standard format."""
         company_news_data = events.get('company_news', [])
-        
         for n in company_news_data:
             std_date, date, time = date_utils.unix_to_display(n['datetime'])
             yield {
@@ -38,7 +37,6 @@ class DataManager:
                 'content': n['headline'],
                 'importance_rank': '1'
             }
-            print(f"  - Processed news item: {std_date} '{n['headline']}'")
 
     def day_events(self, events: Dict[str, Any], date: str = None) -> Dict[str, Any]:
         """Returns only the current date's events."""

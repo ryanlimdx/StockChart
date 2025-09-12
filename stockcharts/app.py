@@ -24,7 +24,7 @@ class StockChartApp:
             
             dbc.Row([
                 dbc.Col([
-                    html.H3(id='app-name', children=f"{self.ticker} Stock Chart"),
+                    html.H3(id='app-name', children="StockChart"),
                     dcc.Loading(
                         type="circle",
                         children=dcc.Graph(id='stock-chart', style={'height': '90vh'})
@@ -37,11 +37,36 @@ class StockChartApp:
                         style={'display': 'none'}
                     ),
                     html.H3(id='info-date'),
-                    html.Hr(),
-                    html.P(id='info-content', style={'whiteSpace': 'pre-wrap'})
+                    dcc.Loading(
+                        type="circle",
+                        # This is now the container for the event cards
+                        children=html.Div(id='info-content')
+                    )
                 ], width=3, className="position-relative"),
             ])
         ], fluid=True, className="p-4")
+
+    def _create_event_cards(self, events):
+        """Creates a list of Card components for events."""
+        if not events:
+            return dbc.Card(
+                dbc.CardBody([
+                    html.H5("No news for this day.", className="card-title")
+                ]),
+                className="mb-3"
+            )
+        
+        event_cards = []
+        for event in events:
+            card = dbc.Card(
+                dbc.CardBody([
+                    html.H5(f"Time: {event['time']}", className="card-title"),
+                    html.P(f"Content: {event['content']}", className="card-text")
+                ]),
+                className="mb-3"
+            )
+            event_cards.append(card)
+        return event_cards
 
     def _setup_callbacks(self):
         @self.app.callback(
@@ -76,12 +101,11 @@ class StockChartApp:
             """ This callback is triggered when event-data-store is updated."""
             if not event_data:
                 return "Today", "Waiting for data...", {'display': 'block'}
-            todays_events = self.data_manager.day_events(events=event_data)            
-            output_string = ""
-            for event in todays_events:
-                output_string += f"Time: {event['time']}\nContent: {event['content']}\n" + "-"*20 + "\n"
-
-            return "Today", output_string or "No news for today.", {'display': 'none'}
+            
+            todays_events = self.data_manager.day_events(events=event_data)       
+            event_cards = self._create_event_cards(todays_events)
+            
+            return "Today", event_cards, {'display': 'none'}
         
         @self.app.callback(
             Output('info-date', 'children', allow_duplicate=True),
@@ -107,22 +131,16 @@ class StockChartApp:
                     return f"{clicked_date}", "Loading...", {'display': 'block'}
                 
                 events_on_date = self.data_manager.day_events(events=all_events, date=clicked_date)                
-                output_string = ""
-                for event in events_on_date:
-                    output_string += f"Time: {event['time']}\nContent: {event['content']}\n" + "-"*20 + "\n"
+                event_cards = self._create_event_cards(events_on_date)
                 
-                return f"{clicked_date}", output_string or "No news for this day.", {'display': 'block'}
+                return f"{clicked_date}", event_cards, {'display': 'block'}
             
             # View for when the close button is clicked
             if triggered_id == 'close-info-button':
                 todays_events = self.data_manager.day_events(all_events)                
-                output_string = ""
-                for event in todays_events:
-                    output_string += f"Time: {event['time']}\nContent: {event['content']}\n" + "-"*20 + "\n"
+                event_cards = self._create_event_cards(todays_events)
                 
-                return "Today", output_string or "No news for today.", {'display': 'none'}
-
-
+                return "Today", event_cards, {'display': 'none'}
 
     def run(self, debug=True):
         self.app.run(debug=debug)
