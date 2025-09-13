@@ -108,6 +108,13 @@ class StockChartApp:
                 "Insider Transaction": "info"
             }.get(event.get('type'), "#222529")
 
+            content_lines = event.get('content', '').split('\n')
+            content_with_breaks = []
+            for i, line in enumerate(content_lines):
+                if i > 0:
+                    content_with_breaks.append(html.Br())
+                content_with_breaks.append(line)
+
             card = dbc.Card(
                 dbc.CardBody([
                     # Header
@@ -139,7 +146,7 @@ class StockChartApp:
 
                     # Content
                     html.P(
-                        event.get('content', ''),
+                        content_with_breaks,
                         className="card-text small text-muted mb-2"
                     ),
 
