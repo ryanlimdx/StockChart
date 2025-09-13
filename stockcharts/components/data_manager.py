@@ -3,6 +3,7 @@ from enum import Enum, IntEnum
 from typing import Dict, Any, List, Generator
 from stockcharts.api.data_fetcher import DataFetcher
 from stockcharts.utils import date_utils
+from itertools import groupby
 
 class DataManager:
     """Handles fetching and processing of all financial data."""
@@ -17,18 +18,25 @@ class DataManager:
         return price
     
     def load_event_data(self) -> List[Dict[str, Any]]:
+        """Fetches raw event data and processes them."""
         raw_events = self._fetch_event_data()
-        processed_events = self._process_events(events=raw_events)
+        processed_events = list(self._process_events(events=raw_events))
         return processed_events
-    
-    def _process_events(self, events: Dict[str, Any]) -> List[Dict[str, Any]]:
-        preprocessed_event_gen = self._preprocess_events(events=events)
-        # TODO: Process events here
-        return list(preprocessed_event_gen)
 
-    def _preprocess_events(self, events: Dict[str, Any]) -> Generator[Dict[str, Any], None, None]:
+    def _process_events(self, events: Dict[str, Any]) -> Generator[Dict[str, Any], None, None]:
         """
-        Performs data transformation, preprocessing one by one, to conform to a standard format.
+        Performs data transformation, preprocessing one by one, to conform to a standard format:
+        {
+            'std_date': the standard date format,
+            'date': the display date format,
+            'time': the display time format, if available,
+            'type': the event type,
+            'title': the title of the content,
+            'content': the (short) summary of the content,
+            'source': the source,
+            'url': the link to the event/ article,
+            'importance_rank': score (for ranking)
+        }
         Yields a single event.
         """
         yield from self._process_macro_news(events.get('macro_news', {}).get('feed', []))
@@ -37,7 +45,60 @@ class DataManager:
         yield from self._process_insider_transactions(events.get('insider_transactions', []))
 
     def _process_macro_news(self, news_data: List[Dict[str, Any]]) -> Generator[Dict[str, Any], None, None]:
-        """Processes and yields macro news events."""
+        """Yields an event that conforms to the standard format."""
+        yield from self._preprocess_macro_news(news_data=news_data)
+
+    def _process_company_news(self, news_data: List[Dict[str, Any]]) -> Generator[Dict[str, Any], None, None]:
+        """Yields an event that conforms to the standard format."""
+        yield from self._preprocess_company_news(news_data=news_data)
+
+    def _process_sec_filings(self, filings_data: List[Dict[str, Any]]) -> Generator[Dict[str, Any], None, None]:
+        """Yields an event that conforms to the standard format."""
+        yield from self._preprocess_sec_filings(filings_data=filings_data)
+
+    def _process_insider_transactions(self, transactions_data: List[Dict[str, Any]]) -> Generator[Dict[str, Any], None, None]:
+        """
+        Processes and aggregates insider transactions, yielding a single aggregated event (for each day).
+        Yields an event that conforms to the standard format.
+        """
+        transactions = list(self._preprocess_insider_transactions(transactions_data=transactions_data))
+        
+        aggregated_events = []
+
+        keyfunc = lambda e: (e['std_date'], e['name'])
+        transactions.sort(key=keyfunc)
+
+        # Aggregate transactions made by the same name (person) on the same day
+        for (std_date, name), group in groupby(transactions, key=keyfunc):
+            group_list = list(group)
+            total_change = sum(item['change'] for item in group_list)
+
+            if total_change == 0:
+                continue
+
+            total_value = sum(item['change'] * item['transactionPrice'] for item in group_list)
+            avg_price = total_value / total_change
+            
+            first_event = group_list[0] # Used as template
+            action = "net acquired" if total_change > 0 else "net disposed of"
+            
+            aggregated_event = {
+                'std_date': std_date,
+                'date': first_event['date'],
+                'time': '', 
+                'type': EventType.INSIDER_TRANSACTION.name,
+                'title': f"{name} {action} {abs(total_change)} shares in {self.ticker}",
+                'content': f"Summary of all transactions on this day.\nAverage price: ${avg_price:.2f}",
+                'source': first_event['source'],
+                'url': first_event['url'],
+                'importance_rank': EventType.INSIDER_TRANSACTION.base_score
+            }
+            aggregated_events.append(aggregated_event)
+        
+        yield from aggregated_events
+
+    def _preprocess_macro_news(self, news_data: List[Dict[str, Any]]) -> Generator[Dict[str, Any], None, None]:
+        """Preprocesses and yields macro news events."""
         for m in news_data:
             if not m.get('title') or not m.get('summary') or not m.get('time_published'):
                 continue
@@ -63,8 +124,8 @@ class DataManager:
                 'importance_rank': score
             }
 
-    def _process_company_news(self, news_data: List[Dict[str, Any]]) -> Generator[Dict[str, Any], None, None]:
-        """Processes and yields company news events."""
+    def _preprocess_company_news(self, news_data: List[Dict[str, Any]]) -> Generator[Dict[str, Any], None, None]:
+        """Preprocesses and yields company news events."""
         for n in news_data:
             if not n.get('headline') or not n.get('summary') or not n.get('datetime'):
                 continue
@@ -82,8 +143,8 @@ class DataManager:
                 'importance_rank': EventType.COMPANY_NEWS.base_score
             }
 
-    def _process_sec_filings(self, filings_data: List[Dict[str, Any]]) -> Generator[Dict[str, Any], None, None]:
-        """Processes and yields SEC filing events."""
+    def _preprocess_sec_filings(self, filings_data: List[Dict[str, Any]]) -> Generator[Dict[str, Any], None, None]:
+        """Preprocesses and yields SEC filing events."""
         for f in filings_data:
             if not f.get('form') or not f.get('filedDate') or not f.get('reportUrl'):
                 continue
@@ -92,7 +153,7 @@ class DataManager:
             yield {
                 'std_date': std_date,
                 'date': date,
-                'time': time,
+                'time': '',
                 'type': EventType.SEC_FILING.name, 
                 'title': f"Form {f['form']}",
                 'content': f"{self.ticker} SEC Filing",
@@ -101,8 +162,8 @@ class DataManager:
                 'importance_rank': EventType.SEC_FILING.base_score
             }
 
-    def _process_insider_transactions(self, transactions_data: List[Dict[str, Any]]) -> Generator[Dict[str, Any], None, None]:
-        """Processes and yields insider transaction events."""
+    def _preprocess_insider_transactions(self, transactions_data: List[Dict[str, Any]]) -> Generator[Dict[str, Any], None, None]:
+        """Preprocesses and yields insider transaction events."""
         for i in transactions_data:
             if not i.get('transactionDate') or not i.get('share') or not i.get('change') or not i.get('name') or not i.get('transactionPrice') or not i.get('transactionCode'):
                 continue
@@ -115,10 +176,13 @@ class DataManager:
                 'std_date': std_date,
                 'date': date,
                 'time': time,
+                'name': i.get('name'),
                 'type': EventType.INSIDER_TRANSACTION.name, 
                 'title': f"{title_string}",
                 'content': f"{content_string}",
-                'source': "🔗 List of Transaction codes (Section 8)",
+                'change': i.get('change'),
+                'transactionPrice': i.get('transactionPrice'),
+                'source': "🔗 List of Transaction Codes (Section 8)",
                 'url': "https://www.sec.gov/about/forms/form4data.pdf",
                 'importance_rank': EventType.INSIDER_TRANSACTION.base_score
             }
@@ -135,13 +199,13 @@ class DataManager:
         """Returns only the current date's events."""
         selected_date = date_utils.get_date(date)
         all_day_events = [e for e in events if e['std_date'] == selected_date]
-        return self._filter_events(all_day_events)
+        return self._top_events(all_day_events)
     
-    def _filter_events(self, events: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Filters the event list."""
+    def _top_events(self, events: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Filters the day's event list to the top 20."""
         if len(events) > 20:
             sorted_events = sorted(events, key=lambda x: int(x.get('importance_rank', 0)), reverse=True)
-            events = sorted_events[:20]
+            events = sorted_events[:10]
         return events
 
 class EventType(Enum):
