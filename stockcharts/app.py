@@ -79,10 +79,8 @@ class StockChartApp:
                         dbc.CardBody([
                             dcc.Loading(
                                 id="loading-title",
-                                type="circle",  # You can also use "default" or "dot"
-                                children=html.H5(id='app-name', children=html.B("StockChart"), className="text-center"),
-                                color="#007BFF", # Optional: spinner color
-                                fullscreen=False # Optional: set to True for a full-screen overlay
+                                type="circle",
+                                children=html.H5(id='app-name', children=html.B("StockChart"), className="text-center")
                             )
                         ], className="d-flex flex-column justify-content-center align-items-center"
                         ), className="mt-4 rounded-4", style={'flex-grow': '1'}

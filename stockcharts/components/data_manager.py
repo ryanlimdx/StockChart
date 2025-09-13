@@ -16,10 +16,29 @@ class DataManager:
         os.makedirs(self._cache_dir, exist_ok=True)
 
     def load_price_data(self) -> pd.DataFrame:
-        """Fetches raw price data in parallel."""
+        """Fetches and cleans raw price data in parallel."""
         price_future = self.data_fetcher.fetch_price_async()
         price = price_future.result()
+        if not price.empty:
+            price = self._clean_price_data(price)
         return price
+    
+    def _clean_price_data(self, price_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Performs essential data cleaning on the raw price DataFrame.
+        """
+        # Drop any rows with missing data
+        price_df.dropna(inplace=True)
+        
+        # Round the price columns to 2 decimal places
+        price_cols = ['Open', 'High', 'Low', 'Close']
+        price_df[price_cols] = price_df[price_cols].round(2)
+        
+        # Drop columns that are not needed for the chart
+        if 'Dividends' in price_df.columns and 'Stock Splits' in price_df.columns:
+            price_df = price_df.drop(columns=['Dividends', 'Stock Splits'])
+        
+        return price_df
     
     def load_event_data(self, force_refresh: bool = False) -> List[Dict[str, Any]]:
         """Fetches raw event data and processes them."""
