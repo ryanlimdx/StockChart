@@ -6,10 +6,8 @@ import yfinance as yf
 import pandas as pd
 import requests
 from dotenv import load_dotenv
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Callable
 from concurrent.futures import ThreadPoolExecutor, Future
-
-from ..utils import date_utils
 
 from stockcharts.utils import date_utils
 
@@ -23,26 +21,45 @@ except ImportError:
 
 class DataFetcher:
     """Handles data fetching from APIs"""
-    def __init__(self, ticker: str = "NVDA"):
+    def __init__(self, ticker: str = "NVDA", range: int = 90):
         if not FINNHUB_API_KEY:
             raise ValueError("Finnhub API key not found in .env")
         
         self.ticker = ticker
         self.end_date = date_utils.now()
-        self.start_date = date_utils.backdate(past_days_ago=90)
+        self.start_date = date_utils.backdate(past_days_ago=range)
 
         # APIs
         self.finnhub_client = finnhub.Client(api_key=FINNHUB_API_KEY)
+    
+    def fetch_price_async(self) -> Future:
+        """Submits the price fetching task to a thread pool."""
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            return executor.submit(self._get_price_history)
 
-    def fetch_data_async(self) -> Dict[str, Future]:
-        """Submits data fetching tasks to a thread pool."""
-        with ThreadPoolExecutor(max_workers=5) as executor:
+    def fetch_events_async(self) -> Dict[str, Future]:
+        """Submits all event fetching tasks to a thread pool."""
+        with ThreadPoolExecutor(max_workers=4) as executor:
             futures = {
-                'price': executor.submit(self._get_price_history),
                 'macro_news': executor.submit(self._get_macro_news),
-                'company_news': executor.submit(self._get_company_news),
-                'filings': executor.submit(self._get_sec_filings),
-                'insider_transactions': executor.submit(self._get_insider_transactions)
+                'company_news': executor.submit(
+                    self._fetch_all_from_finnhub_endpoint,
+                    self.finnhub_client.company_news,
+                    symbol=self.ticker,
+                    batch_size=5
+                ),
+                'filings': executor.submit(
+                    self._fetch_all_from_finnhub_endpoint,
+                    self.finnhub_client.filings,
+                    symbol=self.ticker,
+                    batch_size=30
+                ),
+                'insider_transactions': executor.submit(
+                    self._fetch_all_from_finnhub_endpoint,
+                    self.finnhub_client.stock_insider_transactions,
+                    symbol=self.ticker,
+                    batch_size=30
+                )
             }
         return futures
 
@@ -67,6 +84,7 @@ class DataFetcher:
             f"https://www.alphavantage.co/query?"
             f"function=NEWS_SENTIMENT&"
             f"topics=economy_macro&"
+            f"sort=RELEVANCE&"
             f"time_from={date_utils.get_ISO_date_time(self.start_date)}&"
             f"apikey={ALPHA_VANTAGE_API_KEY}"
         )
@@ -81,6 +99,26 @@ class DataFetcher:
             return {}
 
     # Finnhub
+    def _fetch_all_from_finnhub_endpoint(self, api_endpoint: Callable, batch_size: int = 7, **kwargs) -> List[Dict[str, Any]]:
+        """
+        Orchestrates multiple API calls for a given finnhub endpoint in batches. 
+        Note: Finnhub has a current API limit of 25 calls/ second
+        
+        Args:
+            api_endpoint (Callable): The Finnhub client method to call (e.g., self.finnhub_client.company_news).
+            **kwargs: Keyword arguments to pass to the API endpoint method (e.g., symbol='AAPL').
+        """
+        all_data = []
+        date_ranges = date_utils.get_dates_in_range(start_date=self.start_date, end_date=self.end_date, batch_size=batch_size)
+        
+        for from_date, to_date in date_ranges:
+            try:
+                batch_data = api_endpoint(_from=from_date, to=to_date, **kwargs)
+                all_data.extend(batch_data)
+            except Exception as e:
+                print(f"Error fetching data for {api_endpoint.__name__} from {from_date} to {to_date}: {e}")
+        return all_data
+    
     def _get_company_news(self) -> List[Dict[str, Any]]:
         """Fetches company news."""
         try:
@@ -116,40 +154,3 @@ class DataFetcher:
         except Exception as e:
             print(f"Error fetching Finnhub insider transactions: {e}")
             return []
-        
-    def test():
-        try:
-            fetcher = DataFetcher()
-            macro_data = fetcher._get_macro_news()
-            news_data = fetcher._get_company_news()
-            price_data = fetcher._get_price_history()
-
-            if macro_data and 'feed' in macro_data and macro_data['feed']:
-                print("\n--- First 5 Macro News Headlines ---")
-                for article in macro_data['feed'][:5]:
-                    print(f"Headline: {article.get('title', 'No Title')}")
-                    print(f"Source: {article.get('source', 'N/A')}")
-                    print(f"URL: {article.get('url', 'N/A')}")
-                    print("-" * 20)
-            else:
-                    print("No macro news articles found or an error occurred.")
-
-            print(f"Fetched {len(news_data)} news articles.")
-            if news_data:
-                print("\n--- First 3 News Articles ---")
-                for article in news_data[:3]:
-                    print(f"Headline: {article.get('headline', 'N/A')}")
-                    print(f"Source: {article.get('source', 'N/A')}")
-                    print(f"URL: {article.get('url', 'N/A')}")
-                    print("-" * 20)
-            else:
-                print("No news articles found.")
-
-            print("--- Stock Price History ---")
-            print("\n--- First 5 Rows ---")
-            print(price_data.head())
-                
-        except ValueError as e:
-            print(f"Error: {e}")
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")

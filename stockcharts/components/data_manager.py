@@ -11,16 +11,14 @@ class DataManager:
 
     def fetch_raw_data(self) -> tuple[pd.DataFrame,  Dict[str, Any]]:
         """Fetches raw data in parallel."""
-        futures = self.data_fetcher.fetch_data_async()
+        price_future = self.data_fetcher.fetch_price_async()
+        price = price_future.result()
 
-        price = None
+        event_futures = self.data_fetcher.fetch_events_async()
         events = {}
-
-        for key, future in futures.items():
-            if key == 'price':
-                price = future.result()
-                continue
+        for key, future in event_futures.items():
             events[key] = future.result()
+        
         return price, events
 
     def process_events(self, events: Dict[str, Any]) -> Generator[Dict[str, Any], None, None]:

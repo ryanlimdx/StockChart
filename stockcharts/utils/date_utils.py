@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from functools import singledispatch
-from typing import Any
+from typing import Any, List
 
 STANDARD_DATE_FORMAT = '%Y-%m-%d' # 'YYYY-MM-DD'
 DISPLAY_DATE_FORMAT = '%b %d, %Y - %a' 
@@ -16,6 +16,19 @@ def now() -> str:
 
 def backdate(past_days_ago: int) -> str:
     return datetime.now() - timedelta(days=past_days_ago)
+
+def get_dates_in_range(start_date: datetime, end_date: datetime, batch_size: int = 7) -> List[tuple[str]]:
+    """Generates a list of date strings between two dates."""
+    ranges = []
+    current_start = start_date
+    
+    while current_start <= end_date:
+        current_end = min(current_start + timedelta(days=batch_size - 1), end_date)
+        ranges.append((get_date(current_start), get_date(current_end)))
+        
+        current_start = current_end + timedelta(days=1)
+        
+    return ranges
 
 #########################
 # Date, time formatting #
