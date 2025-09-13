@@ -18,13 +18,32 @@ class DataManager:
     def fetch_event_data(self) -> Dict[str, Any]:
         """Fetches raw event data in parallel."""
         event_futures = self.data_fetcher.fetch_events_async()
+        print(event_futures)
         events = {}
         for key, future in event_futures.items():
             events[key] = future.result()
         return events
 
+    # todo: change to transform events; for process events, filter accordingly
     def process_events(self, events: Dict[str, Any]) -> Generator[Dict[str, Any], None, None]:
-        """Performs data transformation one by one, to conform to a standard format."""
+        """Performs data transformation, preprocessing one by one, to conform to a standard format."""
+        # https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=AAPL&apikey=demo
+        macro_news_data = events.get('macro_news', {}).get('feed', [])
+        for m in macro_news_data:
+            std_date, date, time = date_utils.string_to_display(m['time_published'])
+            yield {
+                'std_date': std_date,
+                'date': date,
+                'time': time,
+                'type': 'Macro News', 
+                'title': m['title'],
+                'content': m['summary'],
+                'source': f"🔗 {m['source']}",
+                'url': m['url'],
+                'importance_rank': '1'
+            }
+
+        # https://finnhub.io/docs/api/company-news
         company_news_data = events.get('company_news', [])
         for n in company_news_data:
             std_date, date, time = date_utils.unix_to_display(n['datetime'])
@@ -33,9 +52,48 @@ class DataManager:
                 'date': date,
                 'time': time,
                 'type': 'News', 
-                'content': n['headline'],
+                'title': n['headline'],
+                'content': n['summary'],
+                'source': f"🔗 {n['source']}",
+                'url': n['url'],
                 'importance_rank': '1'
             }
+        
+        # https://finnhub.io/docs/api/filings
+        sec_filings_data = events.get('filings', [])
+        for f in sec_filings_data:
+            std_date, date, time = date_utils.string_to_display(f['filedDate'])
+            yield {
+                'std_date': std_date,
+                'date': date,
+                'time': time,
+                'type': 'SEC Filing', 
+                'title': f['form'],
+                'content': f"{self.ticker} SEC Filing",
+                'source': "🔗 SEC",
+                'url': f['reportUrl'],
+                'importance_rank': '1'
+            }
+
+        # https://finnhub.io/docs/api/insider-transactions
+        insider_transactions_data = events.get('insider_transactions', [])
+        for i in insider_transactions_data:
+            std_date, date, time = date_utils.string_to_display(i['transactionDate'])
+            action = "increases" if i['change'] > 0 else "decreases"
+            title_string=f"{i['name']} {action} shares in {self.ticker}"
+            content_string=f"Transaction code: {i['transactionCode']}\nTransaction price: {i['transactionPrice']}\nCurrent stake: {i['share']} shares"
+            yield {
+                'std_date': std_date,
+                'date': date,
+                'time': time,
+                'type': 'Insider Transaction', 
+                'title': f"{title_string}",
+                'content': f"{content_string}",
+                'source': "🔗 List of Transaction codes (Section 8)",
+                'url': "https://www.sec.gov/about/forms/form4data.pdf",
+                'importance_rank': '1'
+            }
+        
 
     def day_events(self, events: Dict[str, Any], date: str = None) -> Dict[str, Any]:
         """Returns only the current date's events."""

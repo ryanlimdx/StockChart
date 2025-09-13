@@ -68,5 +68,30 @@ def unix_to_display(unix_timestamp: int) -> tuple[str, str, str]:
     
     return std_date, date, time
 
-
-# def str_todisplay(date_str: str)
+def string_to_display(date_string: str) -> tuple[str, str, str]:
+    """
+    Converts a date string to a tuple of formatted date strings.
+    """
+    date_obj = None
+    
+    formats_to_try = [
+        "%Y-%m-%d %H:%M:%S",
+        STANDARD_DATE_FORMAT,
+        ISO_DATETIME_FORMAT
+    ]
+    
+    for fmt in formats_to_try:
+        try:
+            date_obj = datetime.strptime(date_string, fmt)
+            break
+        except ValueError:
+            continue
+    
+    if date_obj is None:
+        raise ValueError("Unsupported date format.")
+    
+    std_date = date_obj.strftime(STANDARD_DATE_FORMAT)
+    date = date_obj.strftime(DISPLAY_DATE_FORMAT)
+    time = date_obj.strftime(DISPLAY_TIME_FORMAT)
+    
+    return std_date, date, time

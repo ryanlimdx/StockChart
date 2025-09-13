@@ -110,11 +110,16 @@ class DataFetcher:
         """
         all_data = []
         date_ranges = date_utils.get_dates_in_range(start_date=self.start_date, end_date=self.end_date, batch_size=batch_size)
-        
         for from_date, to_date in date_ranges:
             try:
                 batch_data = api_endpoint(_from=from_date, to=to_date, **kwargs)
-                all_data.extend(batch_data)
+
+                # For insider transactions endpoint, as it returns a dict -> Cannot extend!
+                if isinstance(batch_data, dict) and 'data' in batch_data and isinstance(batch_data['data'], list):
+                    all_data.extend(batch_data['data'])
+                # default for most endpoints 
+                elif isinstance(batch_data, list):
+                    all_data.extend(batch_data)
             except Exception as e:
                 print(f"Error fetching data for {api_endpoint.__name__} from {from_date} to {to_date}: {e}")
         return all_data
