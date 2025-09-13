@@ -88,23 +88,69 @@ class StockChartApp:
         ], fluid=True, className="p-4 vh-100")
 
     def _create_event_cards(self, events):
-        """Creates a list of Card components for events."""
-        event_cards = []
+        """Creates a list of styled Card components for events."""
         if not events:
-            card =dbc.Card(
-                dbc.CardBody([
-                    html.P("All caught up!", className="card-text")
-                ]),
-                className="mb-3 rounded-4 bg-secondary"
-            )
-            event_cards.append(card)
-            return event_cards
-        
+            return [
+                dbc.Card(
+                    dbc.CardBody(
+                        html.P("All caught up!", className="card-text text-center m-0")
+                    ),
+                    className="mb-3 rounded-4 bg-secondary"
+                )
+            ]
+
+        event_cards = []
         for event in events:
+            event_type_color = {
+                "Macro News": "primary",
+                "News": "success",
+                "SEC Filing": "warning",
+                "Insider Transaction": "info"
+            }.get(event.get('type'), "#222529")
+
             card = dbc.Card(
                 dbc.CardBody([
-                    html.H5(f"Time: {event['time']}", className="card-title"),
-                    html.P(f"Content: {event['content']}", className="card-text")
+                    # Header
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                dbc.Badge(event.get('type', 'Event'), color=event_type_color, className="me-1"),
+                                width="auto"
+                            ),
+                            dbc.Col(
+                                html.Small(event.get('time', ''), className="text-muted"),
+                                className="text-end"
+                            )
+                        ],
+                        align="center",
+                        className="mb-2"
+                    ),
+
+                    # Title
+                    html.H6(
+                        event.get('title', 'No Title'),
+                        className="mt-3 card-title fw-bold",
+                        style={
+                            'whiteSpace': 'nowrap',
+                            'overflow': 'hidden',
+                            'textOverflow': 'ellipsis'
+                        }
+                    ),
+
+                    # Content
+                    html.P(
+                        event.get('content', ''),
+                        className="card-text small text-muted mb-2"
+                    ),
+
+                    # Footer
+                    html.A(
+                        event.get('source', 'Read more'),
+                        href=event.get('url', '#'),
+                        target="_blank",
+                        rel="noopener noreferrer",
+                        className="card-link small"
+                    )
                 ]),
                 className="mb-3 rounded-4 bg-secondary"
             )

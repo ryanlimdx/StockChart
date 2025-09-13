@@ -71,7 +71,7 @@ class DataManager:
                 'date': date,
                 'time': time,
                 'type': 'SEC Filing', 
-                'title': f['form'],
+                'title': f"Form {f['form']}",
                 'content': f"{self.ticker} SEC Filing",
                 'source': "🔗 SEC",
                 'url': f['reportUrl'],
