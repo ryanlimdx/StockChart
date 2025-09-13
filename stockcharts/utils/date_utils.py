@@ -30,6 +30,11 @@ def get_dates_in_range(start_date: datetime, end_date: datetime, batch_size: int
         
     return ranges
 
+def is_exceed_duration(cache_date_time: str, comparable_date_time: str, duration_h: int) -> bool:
+    """Check if the duration is exceed between 2 ISO Datetime strings"""
+    difference = datetime.strptime(comparable_date_time, ISO_DATETIME_FORMAT) - datetime.strptime(cache_date_time, ISO_DATETIME_FORMAT)
+    return difference > timedelta(hours=duration_h)
+
 #########################
 # Date, time formatting #
 #########################

@@ -4,12 +4,16 @@ from typing import Dict, Any, List, Generator
 from stockcharts.api.data_fetcher import DataFetcher
 from stockcharts.utils import date_utils
 from itertools import groupby
+import os
+import json
 
 class DataManager:
     """Handles fetching and processing of all financial data."""
     def __init__(self, ticker: str = "NVDA"):
         self.ticker = ticker
         self.data_fetcher = DataFetcher(ticker=ticker)
+        self._cache_dir = "cache"
+        os.makedirs(self._cache_dir, exist_ok=True)
 
     def load_price_data(self) -> pd.DataFrame:
         """Fetches raw price data in parallel."""
@@ -19,8 +23,32 @@ class DataManager:
     
     def load_event_data(self) -> List[Dict[str, Any]]:
         """Fetches raw event data and processes them."""
+        cache_path = os.path.join(self._cache_dir, f"{self.ticker}_events.json")
+
+        # Check if a valid, non-stale cache entry exists
+        if os.path.exists(cache_path):
+            with open(cache_path, 'r') as f:
+                try:
+                    cached_data = json.load(f)
+                    # Check if the cache is older than the specified duration
+                    if not date_utils.is_exceed_duration(
+                        cache_date_time=cached_data.get('timestamp'),
+                        comparable_date_time=date_utils.get_ISO_date_time(date_obj=date_utils.now()),
+                        duration_h=6
+                        ):
+                        return cached_data.get('data')
+                except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
+                    print(f"Error reading cache file for {self.ticker}, or it's in an old format: {e}. Fetching new data.")
+        print("No cached data")
         raw_events = self._fetch_event_data()
         processed_events = list(self._process_events(events=raw_events))
+
+        data_to_save = {
+            'data': processed_events,
+            'timestamp': date_utils.get_ISO_date_time(date_obj=date_utils.now())
+        }
+        with open(cache_path, 'w') as f:
+            json.dump(data_to_save, f)
         return processed_events
 
     def _process_events(self, events: Dict[str, Any]) -> Generator[Dict[str, Any], None, None]:
@@ -188,7 +216,7 @@ class DataManager:
             }
 
     def _fetch_event_data(self) -> Dict[str, Any]:
-        """Fetches raw event data in parallel."""
+        """Fetches raw event data."""
         event_futures = self.data_fetcher.fetch_events_async()
         events = {}
         for key, future in event_futures.items():
