@@ -131,9 +131,7 @@ class StockChartApp:
         )
         def load_event_data(n_clicks):
             """This callback is triggered on page load for loading the events"""
-            events = self.data_manager.fetch_event_data()
-            processed_events = self.data_manager.process_events(events=events)
-            return processed_events
+            return self.data_manager.load_event_data()
 
         @self.app.callback(
             [
