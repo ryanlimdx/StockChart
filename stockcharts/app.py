@@ -99,24 +99,25 @@ class StockChartApp:
 
     def _setup_callbacks(self):
         @self.app.callback(
-            [
-                Output('stock-chart', 'figure'), 
-                Output('event-data-store', 'data')
-            ],
-            [Input('app-name', 'n_clicks')]
+            Output('stock-chart', 'figure'),
+            Input('app-name', 'n_clicks')
         )
-        def start_loading_and_fetch_data(n_clicks):
-            """
-            This callback is triggered on initial page load to fetch the raw data.
-            It is a one-time, blocking operation.
-            """
-            price, events = self.data_manager.fetch_raw_data()
-            processed_events = list(self.data_manager.process_events(events=events))
+        def load_price_chart(n_clicks):
+            """This callback is triggered on page load for loading the price chart"""
+            price = self.data_manager.fetch_price_data()
             chart_builder = ChartBuilder(price)
             fig = chart_builder.create_figure()
+            return fig
 
-            return fig, processed_events
-
+        @self.app.callback(
+            Output('event-data-store', 'data'),
+            Input('app-name', 'n_clicks')
+        )
+        def load_event_data(n_clicks):
+            """This callback is triggered on page load for loading the events"""
+            events = self.data_manager.fetch_event_data()
+            processed_events = list(self.data_manager.process_events(events=events))
+            return processed_events
 
         @self.app.callback(
             [

@@ -9,17 +9,19 @@ class DataManager:
         self.ticker = ticker
         self.data_fetcher = DataFetcher(ticker=ticker)
 
-    def fetch_raw_data(self) -> tuple[pd.DataFrame,  Dict[str, Any]]:
-        """Fetches raw data in parallel."""
+    def fetch_price_data(self) -> pd.DataFrame:
+        """Fetches raw price data in parallel."""
         price_future = self.data_fetcher.fetch_price_async()
         price = price_future.result()
+        return price
 
+    def fetch_event_data(self) -> Dict[str, Any]:
+        """Fetches raw event data in parallel."""
         event_futures = self.data_fetcher.fetch_events_async()
         events = {}
         for key, future in event_futures.items():
             events[key] = future.result()
-        
-        return price, events
+        return events
 
     def process_events(self, events: Dict[str, Any]) -> Generator[Dict[str, Any], None, None]:
         """Performs data transformation one by one, to conform to a standard format."""
