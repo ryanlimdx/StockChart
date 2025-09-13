@@ -27,30 +27,28 @@ class StockChartApp:
                 dbc.Col([
                     dbc.Card(
                         dbc.CardBody(
-                            [
-                                html.H3(id='app-name', children="StockChart")
-                            ]
-                        ), className="mb-4 rounded-4"
-                    ),
-                    dbc.Card(
-                        dbc.CardBody(
-                            [
+                            [   
+                                html.P(children=f"{self.ticker} - 3 Month"),
                                 dcc.Loading(
                                     type="circle",
                                     children=dcc.Graph(id='stock-chart', style={'height': '90vh'})
                                 )
-                            ],
-                        ), className="rounded-4", style={'background-color': '#111111'}
+                            ]
+                        ), 
+                        className="rounded-4 d-flex flex-column", 
+                        style={
+                            'background-color': '#111111', 
+                            'height': '100%',
+                            }
                     ),
-                    
-                ], width=9),
-                dbc.Col(
+                ], width=9,  style={'height': '100%', 'display': 'flex', 'flex-direction': 'column'}),
+                dbc.Col([
                     dbc.Card(
                         dbc.CardBody([
                             dbc.Row(
                                 [
                                     dbc.Col(
-                                        html.H3(id='info-date', children="Today", className="mb-5")
+                                        html.H3(id='info-date', children=html.B("Today"), className="mb-5")
                                     ),
                                     dbc.Col(
                                         dbc.Button(
@@ -77,12 +75,19 @@ class StockChartApp:
                                 )
                             )
                         ]),
-                        className="rounded-4", style={'height': '100vh'}
+                        className="rounded-4", style={'height': '95%'}
                     ),
-                    width=3,  className="position-relative"
+                    dbc.Card(
+                        dbc.CardBody([
+                            html.H5(id='app-name', children=html.B("StockChart"), className="text-center")
+                        ], className="d-flex flex-column justify-content-center align-items-center"
+                        ), className="mt-4 rounded-4", style={'flex-grow': '1'}
+                    ),
+
+                ], width=3,  style={'height': '100%', 'display': 'flex', 'flex-direction': 'column'}
                 ),
-            ])
-        ], fluid=True, className="p-4")
+            ], style={'height': '100%'})
+        ], fluid=True, className="p-4 vh-100")
 
     def _create_event_cards(self, events):
         """Creates a list of Card components for events."""
@@ -147,7 +152,7 @@ class StockChartApp:
             triggered_id = ctx.triggered_id
 
             if event_data_input is None:
-                return "Today", no_update, {'display': 'none'}
+                return html.B("Today"), no_update, {'display': 'none'}
             
             if triggered_id == 'stock-chart' and clickData:
                 clicked_date = clickData['points'][0]['x']
@@ -156,11 +161,11 @@ class StockChartApp:
                 events_on_date = self.data_manager.day_events(events=all_events, date=clicked_date)
                 event_cards = self._create_event_cards(events_on_date)
                 
-                return f"{clicked_date}", event_cards, {'display': 'block'}
+                return html.B(f"{clicked_date}"), event_cards, {'display': 'block'}
             
             todays_events = self.data_manager.day_events(events=event_data_input)
             event_cards = self._create_event_cards(todays_events)
-            return "Today", event_cards, {'display': 'none'}
+            return html.B("Today"), event_cards, {'display': 'none'}
 
     def run(self, debug=True):
         self.app.run(debug=debug)
