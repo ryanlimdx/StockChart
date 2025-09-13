@@ -35,7 +35,7 @@ class DataManager:
         # https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=AAPL&apikey=demo
         macro_news_data = events.get('macro_news', {}).get('feed', [])
         for m in macro_news_data:
-            score = EventType.MACRO_NEWS.score
+            score = EventType.MACRO_NEWS.base_score
             ticker_sentiment_list = m.get('ticker_sentiment', [])
 
             ticker_sentiments = {s['ticker']: s for s in ticker_sentiment_list}
@@ -48,7 +48,7 @@ class DataManager:
                 'std_date': std_date,
                 'date': date,
                 'time': time,
-                'type': EventType.MACRO_NEWS.value, 
+                'type': EventType.MACRO_NEWS.name, 
                 'title': m['title'],
                 'content': m['summary'],
                 'source': f"🔗 {m['source']}",
@@ -64,12 +64,12 @@ class DataManager:
                 'std_date': std_date,
                 'date': date,
                 'time': time,
-                'type': EventType.COMPANY_NEWS.value, 
+                'type': EventType.COMPANY_NEWS.name, 
                 'title': n['headline'],
                 'content': n['summary'],
                 'source': f"🔗 {n['source']}",
                 'url': n['url'],
-                'importance_rank': EventType.COMPANY_NEWS.score
+                'importance_rank': EventType.COMPANY_NEWS.base_score
             }
         
         # https://finnhub.io/docs/api/filings
@@ -80,12 +80,12 @@ class DataManager:
                 'std_date': std_date,
                 'date': date,
                 'time': time,
-                'type': EventType.SEC_FILING.value, 
+                'type': EventType.SEC_FILING.name, 
                 'title': f"Form {f['form']}",
                 'content': f"{self.ticker} SEC Filing",
                 'source': "🔗 SEC",
                 'url': f['reportUrl'],
-                'importance_rank': EventType.SEC_FILING.score
+                'importance_rank': EventType.SEC_FILING.base_score
             }
 
         # https://finnhub.io/docs/api/insider-transactions
@@ -99,12 +99,12 @@ class DataManager:
                 'std_date': std_date,
                 'date': date,
                 'time': time,
-                'type': EventType.INSIDER_TRANSACTION.value, 
+                'type': EventType.INSIDER_TRANSACTION.name, 
                 'title': f"{title_string}",
                 'content': f"{content_string}",
                 'source': "🔗 List of Transaction codes (Section 8)",
                 'url': "https://www.sec.gov/about/forms/form4data.pdf",
-                'importance_rank': EventType.INSIDER_TRANSACTION.score
+                'importance_rank': EventType.INSIDER_TRANSACTION.base_score
             }
 
     def _fetch_event_data(self) -> Dict[str, Any]:
@@ -132,11 +132,16 @@ class EventType(Enum):
     """
     Defines the types of events with associated string and base scores.
     """
-    def __new__(cls, value, score):
+    def __new__(cls, name: str, base_score: float):
         obj = object.__new__(cls)
-        obj._value_ = value
-        obj.score = score
+        obj._value_ = name
+        obj._event_name = name
+        obj.base_score = base_score
         return obj
+
+    @property
+    def name(self):
+        return self._event_name
 
     MACRO_NEWS = "Macro News", 0.4
     COMPANY_NEWS = "News", 0.6
