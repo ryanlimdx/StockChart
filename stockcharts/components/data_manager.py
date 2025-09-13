@@ -21,12 +21,12 @@ class DataManager:
         price = price_future.result()
         return price
     
-    def load_event_data(self) -> List[Dict[str, Any]]:
+    def load_event_data(self, force_refresh: bool = False) -> List[Dict[str, Any]]:
         """Fetches raw event data and processes them."""
         cache_path = os.path.join(self._cache_dir, f"{self.ticker}_events.json")
 
         # Check if a valid, non-stale cache entry exists
-        if os.path.exists(cache_path):
+        if not force_refresh and os.path.exists(cache_path):
             with open(cache_path, 'r') as f:
                 try:
                     cached_data = json.load(f)
@@ -37,9 +37,10 @@ class DataManager:
                         duration_h=6
                         ):
                         return cached_data.get('data')
+                        
                 except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
                     print(f"Error reading cache file for {self.ticker}, or it's in an old format: {e}. Fetching new data.")
-        print("No cached data")
+        self.clear_cache()
         raw_events = self._fetch_event_data()
         processed_events = list(self._process_events(events=raw_events))
 
@@ -235,6 +236,15 @@ class DataManager:
             sorted_events = sorted(events, key=lambda x: int(x.get('importance_rank', 0)), reverse=True)
             events = sorted_events[:10]
         return events
+    
+    def clear_cache(self) -> None:
+        """ Clears the stale cache."""
+        cache_path = os.path.join(self._cache_dir, f"{self.ticker}_events.json")
+        if os.path.exists(cache_path):
+            os.remove(cache_path)
+            print(f"Cache file for {self.ticker} has been cleared. Please wait for the data to be refreshed.")
+        else:
+            print(f"No cache file found for {self.ticker} to clear.")
 
 class EventType(Enum):
     """
