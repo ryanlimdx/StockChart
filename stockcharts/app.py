@@ -77,7 +77,13 @@ class StockChartApp:
                     ),
                     dbc.Card(
                         dbc.CardBody([
-                            html.H5(id='app-name', children=html.B("StockChart"), className="text-center")
+                            dcc.Loading(
+                                id="loading-title",
+                                type="circle",  # You can also use "default" or "dot"
+                                children=html.H5(id='app-name', children=html.B("StockChart"), className="text-center"),
+                                color="#007BFF", # Optional: spinner color
+                                fullscreen=False # Optional: set to True for a full-screen overlay
+                            )
                         ], className="d-flex flex-column justify-content-center align-items-center"
                         ), className="mt-4 rounded-4", style={'flex-grow': '1'}
                     ),
@@ -178,12 +184,14 @@ class StockChartApp:
 
         @self.app.callback(
             Output('event-data-store', 'data'),
-            Input('app-name', 'n_clicks')
+            Output('app-name', 'children'),
+            Input('app-name', 'n_clicks'),
+            prevent_initial_call='initial_duplicate' 
         )
         def load_event_data(n_clicks):
             """This callback is triggered on page load for loading the events"""
             force_refresh = n_clicks is not None
-            return self.data_manager.load_event_data(force_refresh=force_refresh)
+            return self.data_manager.load_event_data(force_refresh=force_refresh), "StockCharts"
 
         @self.app.callback(
             [
