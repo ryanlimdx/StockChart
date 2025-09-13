@@ -43,38 +43,38 @@ class StockChartApp:
                     ),
                 ], width=9,  style={'height': '100%', 'display': 'flex', 'flex-direction': 'column'}),
                 dbc.Col([
-                                dbc.Card(
-                                    dbc.CardBody(
-                                        [
-                                            dbc.Row(
-                                                [
-                                                    dbc.Col(html.H3(id='info-date', children=html.B("Today"))),
-                                                    dbc.Col(
-                                                        dbc.Button("X", id='close-info-button', size="sm", className="ms-auto", style={'display': 'none'}),
-                                                        width="auto"
-                                                    )
-                                                ],
-                                                align="center",
-                                                className="mb-3 flex-shrink-0"
-                                            ),
-                                            html.Div(
-                                                id='info-content',
-                                                style={'overflowY': 'auto'},
-                                                children=[
-                                                    dbc.Card(
-                                                        dbc.CardBody(
-                                                            html.P("Loading events...", className="card-text text-center m-0")
-                                                        ),
-                                                        className="rounded-4 bg-secondary"
-                                                    )
-                                                ]
-                                            )
-                                        ],
-                                        className="d-flex flex-column h-100"
-                                    ),
-                                    className="rounded-4 flex-grow-1",
-                                    style={'min-height': '0', 'height': '95%'}
+                    dbc.Card(
+                        dbc.CardBody(
+                            [
+                                dbc.Row(
+                                    [
+                                        dbc.Col(html.H3(id='info-date', children=html.B("Today"))),
+                                        dbc.Col(
+                                            dbc.Button("X", id='close-info-button', size="sm", className="ms-auto", style={'display': 'none'}),
+                                            width="auto"
+                                        )
+                                    ],
+                                    align="center",
+                                    className="mb-3 flex-shrink-0"
                                 ),
+                                html.Div(
+                                    id='info-content',
+                                    style={'overflowY': 'auto'},
+                                    children=[
+                                        dbc.Card(
+                                            dbc.CardBody(
+                                                html.P("Loading events...", className="card-text text-center m-0")
+                                            ),
+                                            className="rounded-4 bg-secondary"
+                                        )
+                                    ]
+                                )
+                            ],
+                            className="d-flex flex-column h-100"
+                        ),
+                        className="rounded-4 flex-grow-1",
+                        style={'min-height': '0', 'height': '95%'}
+                    ),
                     dbc.Card(
                         dbc.CardBody([
                             html.H5(id='app-name', children=html.B("StockChart"), className="text-center")
