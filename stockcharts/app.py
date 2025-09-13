@@ -125,52 +125,29 @@ class StockChartApp:
                 Output('info-content', 'children'), 
                 Output('close-info-button', 'style')
             ],
-            [Input('event-data-store', 'data')]
+            [
+                Input('event-data-store', 'data'),
+                Input('stock-chart', 'clickData'),
+                Input('close-info-button', 'n_clicks')
+            ],
+            State('event-data-store', 'data')
         )
-        def process_and_display_todays_events(event_data):
-            """ This callback is triggered when event-data-store is updated."""
-            if not event_data:
-                return "Today", "Waiting for data...", {'display': 'block'}
-            
-            todays_events = self.data_manager.day_events(events=event_data)       
-            event_cards = self._create_event_cards(todays_events)
-            
-            return "Today", event_cards, {'display': 'none'}
-        
-        @self.app.callback(
-            Output('info-date', 'children', allow_duplicate=True),
-            Output('info-content', 'children', allow_duplicate=True),
-            Output('close-info-button', 'style', allow_duplicate=True),
-            Input('stock-chart', 'clickData'),
-            Input('close-info-button', 'n_clicks'),
-            State('event-data-store', 'data'),
-            prevent_initial_call=True
-        )
-        def update_info_panel(clickData, close_clicks, all_events):
-            """
-            This callback is triggered by a chart click OR a close button click.
-            """
+        def update_info_panel(event_data_input, clickData, close_clicks, all_events):
             triggered_id = ctx.triggered_id
+            
+            if triggered_id in ['event-data-store', 'close-info-button']:
+                todays_events = self.data_manager.day_events(events=event_data_input)
+                event_cards = self._create_event_cards(todays_events)
+                return "Today", event_cards, {'display': 'none'}
 
-            # View for a specific day: when the chart is clicked
             if triggered_id == 'stock-chart' and clickData:
                 clicked_date = clickData['points'][0]['x']
                 clicked_date = date_utils.get_date(clicked_date)
                 
-                if all_events is None:
-                    return f"{clicked_date}", "Loading...", {'display': 'block'}
-                
-                events_on_date = self.data_manager.day_events(events=all_events, date=clicked_date)                
+                events_on_date = self.data_manager.day_events(events=all_events, date=clicked_date)
                 event_cards = self._create_event_cards(events_on_date)
                 
                 return f"{clicked_date}", event_cards, {'display': 'block'}
-            
-            # View for when the close button is clicked
-            if triggered_id == 'close-info-button':
-                todays_events = self.data_manager.day_events(all_events)                
-                event_cards = self._create_event_cards(todays_events)
-                
-                return "Today", event_cards, {'display': 'none'}
 
     def run(self, debug=True):
         self.app.run(debug=debug)
