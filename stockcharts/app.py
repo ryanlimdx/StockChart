@@ -50,7 +50,7 @@ class StockChartApp:
                             dbc.Row(
                                 [
                                     dbc.Col(
-                                        html.H3(id='info-date', className="mb-5")
+                                        html.H3(id='info-date', children="Today", className="mb-5")
                                     ),
                                     dbc.Col(
                                         dbc.Button(
@@ -135,11 +135,6 @@ class StockChartApp:
         def update_info_panel(event_data_input, clickData, close_clicks, all_events):
             triggered_id = ctx.triggered_id
             
-            if triggered_id in ['event-data-store', 'close-info-button']:
-                todays_events = self.data_manager.day_events(events=event_data_input)
-                event_cards = self._create_event_cards(todays_events)
-                return "Today", event_cards, {'display': 'none'}
-
             if triggered_id == 'stock-chart' and clickData:
                 clicked_date = clickData['points'][0]['x']
                 clicked_date = date_utils.get_date(clicked_date)
@@ -148,6 +143,10 @@ class StockChartApp:
                 event_cards = self._create_event_cards(events_on_date)
                 
                 return f"{clicked_date}", event_cards, {'display': 'block'}
+            
+            todays_events = self.data_manager.day_events(events=event_data_input)
+            event_cards = self._create_event_cards(todays_events)
+            return "Today", event_cards, {'display': 'none'}
 
     def run(self, debug=True):
         self.app.run(debug=debug)
