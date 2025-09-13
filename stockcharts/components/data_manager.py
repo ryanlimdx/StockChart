@@ -29,12 +29,19 @@ class DataManager:
     def _preprocess_events(self, events: Dict[str, Any]) -> Generator[Dict[str, Any], None, None]:
         """
         Performs data transformation, preprocessing one by one, to conform to a standard format.
-        Returns an event.
+        Yields a single event.
         """
+        yield from self._process_macro_news(events.get('macro_news', {}).get('feed', []))
+        yield from self._process_company_news(events.get('company_news', []))
+        yield from self._process_sec_filings(events.get('filings', []))
+        yield from self._process_insider_transactions(events.get('insider_transactions', []))
 
-        # https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=AAPL&apikey=demo
-        macro_news_data = events.get('macro_news', {}).get('feed', [])
-        for m in macro_news_data:
+    def _process_macro_news(self, news_data: List[Dict[str, Any]]) -> Generator[Dict[str, Any], None, None]:
+        """Processes and yields macro news events."""
+        for m in news_data:
+            if not m.get('title') or not m.get('summary') or not m.get('time_published'):
+                continue
+
             score = EventType.MACRO_NEWS.base_score
             ticker_sentiment_list = m.get('ticker_sentiment', [])
 
@@ -48,7 +55,7 @@ class DataManager:
                 'std_date': std_date,
                 'date': date,
                 'time': time,
-                'type': EventType.MACRO_NEWS.name, 
+                'type': EventType.MACRO_NEWS.name,
                 'title': m['title'],
                 'content': m['summary'],
                 'source': f"🔗 {m['source']}",
@@ -56,9 +63,12 @@ class DataManager:
                 'importance_rank': score
             }
 
-        # https://finnhub.io/docs/api/company-news
-        company_news_data = events.get('company_news', [])
-        for n in company_news_data:
+    def _process_company_news(self, news_data: List[Dict[str, Any]]) -> Generator[Dict[str, Any], None, None]:
+        """Processes and yields company news events."""
+        for n in news_data:
+            if not n.get('headline') or not n.get('summary') or not n.get('datetime'):
+                continue
+            
             std_date, date, time = date_utils.unix_to_display(n['datetime'])
             yield {
                 'std_date': std_date,
@@ -71,10 +81,13 @@ class DataManager:
                 'url': n['url'],
                 'importance_rank': EventType.COMPANY_NEWS.base_score
             }
-        
-        # https://finnhub.io/docs/api/filings
-        sec_filings_data = events.get('filings', [])
-        for f in sec_filings_data:
+
+    def _process_sec_filings(self, filings_data: List[Dict[str, Any]]) -> Generator[Dict[str, Any], None, None]:
+        """Processes and yields SEC filing events."""
+        for f in filings_data:
+            if not f.get('form') or not f.get('filedDate') or not f.get('reportUrl'):
+                continue
+
             std_date, date, time = date_utils.string_to_display(f['filedDate'])
             yield {
                 'std_date': std_date,
@@ -88,9 +101,12 @@ class DataManager:
                 'importance_rank': EventType.SEC_FILING.base_score
             }
 
-        # https://finnhub.io/docs/api/insider-transactions
-        insider_transactions_data = events.get('insider_transactions', [])
-        for i in insider_transactions_data:
+    def _process_insider_transactions(self, transactions_data: List[Dict[str, Any]]) -> Generator[Dict[str, Any], None, None]:
+        """Processes and yields insider transaction events."""
+        for i in transactions_data:
+            if not i.get('transactionDate') or not i.get('share') or not i.get('change') or not i.get('name') or not i.get('transactionPrice') or not i.get('transactionCode'):
+                continue
+            
             std_date, date, time = date_utils.string_to_display(i['transactionDate'])
             action = "increases" if i['change'] > 0 else "decreases"
             title_string=f"{i['name']} {action} shares in {self.ticker}"
@@ -146,7 +162,7 @@ class EventType(Enum):
     MACRO_NEWS = "Macro News", 0.4
     COMPANY_NEWS = "News", 0.6
     INSIDER_TRANSACTION = "Insider Transaction", 1.0
-    SEC_FILING = "SEC Filing", 0.8
+    SEC_FILING = "SEC Filing", 1.0
 
 if __name__ == '__main__':
     DataManager(ticker="NVDA")
