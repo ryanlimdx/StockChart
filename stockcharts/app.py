@@ -1,5 +1,5 @@
 import dash
-from dash import dcc, html, Input, Output, State, ctx
+from dash import dcc, html, Input, Output, State, ctx, no_update
 import dash_bootstrap_components as dbc
 import os
 import plotly.graph_objects as go
@@ -63,7 +63,18 @@ class StockChartApp:
                             ),
                             dcc.Loading(
                                 type="circle",
-                                children=html.Div(id='info-content')
+                                children=html.Div(
+                                    id='info-content',
+                                    children=dcc.Loading(
+                                        type="circle",
+                                        children=dbc.Card(
+                                            dbc.CardBody([
+                                                html.P("Loading events...", className="card-text text-center")
+                                            ]),
+                                            className="rounded-4 bg-secondary"
+                                        )
+                                    )
+                                )
                             )
                         ]),
                         className="rounded-4", style={'height': '100vh'}
@@ -134,6 +145,9 @@ class StockChartApp:
         )
         def update_info_panel(event_data_input, clickData, close_clicks, all_events):
             triggered_id = ctx.triggered_id
+
+            if event_data_input is None:
+                return "Today", no_update, {'display': 'none'}
             
             if triggered_id == 'stock-chart' and clickData:
                 clicked_date = clickData['points'][0]['x']

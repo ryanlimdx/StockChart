@@ -1,9 +1,8 @@
 # Project dependencies
-dash==2.18.0
-dash-bootstrap-components==1.7.1
+dash
+dash-bootstrap-components
 plotly
 pandas
 yfinance
 finnhub-python
 python-dotenv
-dash[diskcache]
