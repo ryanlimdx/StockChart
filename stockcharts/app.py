@@ -120,7 +120,7 @@ class StockChartApp:
         )
         def load_price_chart(n_clicks):
             """This callback is triggered on page load for loading the price chart"""
-            price = self.data_manager.fetch_price_data()
+            price = self.data_manager.load_price_data()
             chart_builder = ChartBuilder(price)
             fig = chart_builder.create_figure()
             return fig
@@ -132,7 +132,7 @@ class StockChartApp:
         def load_event_data(n_clicks):
             """This callback is triggered on page load for loading the events"""
             events = self.data_manager.fetch_event_data()
-            processed_events = list(self.data_manager.process_events(events=events))
+            processed_events = self.data_manager.process_events(events=events)
             return processed_events
 
         @self.app.callback(

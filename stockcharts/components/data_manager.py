@@ -1,5 +1,5 @@
 import pandas as pd
-from typing import Dict, Any, Generator
+from typing import Dict, Any, List, Generator
 from stockcharts.api.data_fetcher import DataFetcher
 from stockcharts.utils import date_utils
 
@@ -9,24 +9,21 @@ class DataManager:
         self.ticker = ticker
         self.data_fetcher = DataFetcher(ticker=ticker)
 
-    def fetch_price_data(self) -> pd.DataFrame:
+    def load_price_data(self) -> pd.DataFrame:
         """Fetches raw price data in parallel."""
         price_future = self.data_fetcher.fetch_price_async()
         price = price_future.result()
         return price
-
-    def fetch_event_data(self) -> Dict[str, Any]:
-        """Fetches raw event data in parallel."""
-        event_futures = self.data_fetcher.fetch_events_async()
-        print(event_futures)
-        events = {}
-        for key, future in event_futures.items():
-            events[key] = future.result()
-        return events
+    
+    def process_events(self, events: Dict[str, Any]) -> List[Dict[str, Any]]:
+        return list(self.preprocess_events(events=events))
 
     # todo: change to transform events; for process events, filter accordingly
-    def process_events(self, events: Dict[str, Any]) -> Generator[Dict[str, Any], None, None]:
-        """Performs data transformation, preprocessing one by one, to conform to a standard format."""
+    def preprocess_events(self, events: Dict[str, Any]) -> Generator[Dict[str, Any], None, None]:
+        """
+        Performs data transformation, preprocessing one by one, to conform to a standard format.
+        Returns an event.
+        """
         # https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=AAPL&apikey=demo
         macro_news_data = events.get('macro_news', {}).get('feed', [])
         for m in macro_news_data:
@@ -93,15 +90,22 @@ class DataManager:
                 'url': "https://www.sec.gov/about/forms/form4data.pdf",
                 'importance_rank': '1'
             }
-        
 
-    def day_events(self, events: Dict[str, Any], date: str = None) -> Dict[str, Any]:
+    def fetch_event_data(self) -> Dict[str, Any]:
+        """Fetches raw event data in parallel."""
+        event_futures = self.data_fetcher.fetch_events_async()
+        events = {}
+        for key, future in event_futures.items():
+            events[key] = future.result()
+        return events
+
+    def day_events(self, events: List[Dict[str, Any]], date: str = None) -> Dict[str, Any]:
         """Returns only the current date's events."""
         selected_date = date_utils.get_date(date)
         all_day_events = [e for e in events if e['std_date'] == selected_date]
         return self.filter_events(all_day_events)
     
-    def filter_events(self, events: Dict[str, Any]) -> Dict[str, Any]:
+    def filter_events(self, events: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Filters the event list."""
         if len(events) > 5:
             sorted_events = sorted(events, key=lambda x: int(x.get('importance_rank', 0)), reverse=True)
