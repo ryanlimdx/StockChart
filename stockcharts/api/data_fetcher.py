@@ -86,6 +86,7 @@ class DataFetcher:
             f"topics=economy_macro&"
             f"sort=RELEVANCE&"
             f"time_from={date_utils.get_ISO_date_time(self.start_date)}&"
+            f"limit=1000&"
             f"apikey={ALPHA_VANTAGE_API_KEY}"
         )
 

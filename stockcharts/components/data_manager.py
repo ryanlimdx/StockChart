@@ -1,4 +1,5 @@
 import pandas as pd
+from enum import Enum, IntEnum
 from typing import Dict, Any, List, Generator
 from stockcharts.api.data_fetcher import DataFetcher
 from stockcharts.utils import date_utils
@@ -30,20 +31,29 @@ class DataManager:
         Performs data transformation, preprocessing one by one, to conform to a standard format.
         Returns an event.
         """
+
         # https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=AAPL&apikey=demo
         macro_news_data = events.get('macro_news', {}).get('feed', [])
         for m in macro_news_data:
+            score = EventType.MACRO_NEWS.score
+            ticker_sentiment_list = m.get('ticker_sentiment', [])
+
+            ticker_sentiments = {s['ticker']: s for s in ticker_sentiment_list}
+            sentiment = ticker_sentiments.get(self.ticker, {})
+            relevance = float(sentiment.get('relevance_score', 0))
+            score *= (1 + relevance)
+
             std_date, date, time = date_utils.string_to_display(m['time_published'])
             yield {
                 'std_date': std_date,
                 'date': date,
                 'time': time,
-                'type': 'Macro News', 
+                'type': EventType.MACRO_NEWS.value, 
                 'title': m['title'],
                 'content': m['summary'],
                 'source': f"🔗 {m['source']}",
                 'url': m['url'],
-                'importance_rank': '1'
+                'importance_rank': score
             }
 
         # https://finnhub.io/docs/api/company-news
@@ -54,12 +64,12 @@ class DataManager:
                 'std_date': std_date,
                 'date': date,
                 'time': time,
-                'type': 'News', 
+                'type': EventType.COMPANY_NEWS.value, 
                 'title': n['headline'],
                 'content': n['summary'],
                 'source': f"🔗 {n['source']}",
                 'url': n['url'],
-                'importance_rank': '1'
+                'importance_rank': EventType.COMPANY_NEWS.score
             }
         
         # https://finnhub.io/docs/api/filings
@@ -70,12 +80,12 @@ class DataManager:
                 'std_date': std_date,
                 'date': date,
                 'time': time,
-                'type': 'SEC Filing', 
+                'type': EventType.SEC_FILING.value, 
                 'title': f"Form {f['form']}",
                 'content': f"{self.ticker} SEC Filing",
                 'source': "🔗 SEC",
                 'url': f['reportUrl'],
-                'importance_rank': '1'
+                'importance_rank': EventType.SEC_FILING.score
             }
 
         # https://finnhub.io/docs/api/insider-transactions
@@ -89,12 +99,12 @@ class DataManager:
                 'std_date': std_date,
                 'date': date,
                 'time': time,
-                'type': 'Insider Transaction', 
+                'type': EventType.INSIDER_TRANSACTION.value, 
                 'title': f"{title_string}",
                 'content': f"{content_string}",
                 'source': "🔗 List of Transaction codes (Section 8)",
                 'url': "https://www.sec.gov/about/forms/form4data.pdf",
-                'importance_rank': '1'
+                'importance_rank': EventType.INSIDER_TRANSACTION.score
             }
 
     def _fetch_event_data(self) -> Dict[str, Any]:
@@ -113,11 +123,25 @@ class DataManager:
     
     def _filter_events(self, events: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Filters the event list."""
-        if len(events) > 5:
+        if len(events) > 20:
             sorted_events = sorted(events, key=lambda x: int(x.get('importance_rank', 0)), reverse=True)
-            events = sorted_events[:5]
+            events = sorted_events[:20]
         return events
 
+class EventType(Enum):
+    """
+    Defines the types of events with associated string and base scores.
+    """
+    def __new__(cls, value, score):
+        obj = object.__new__(cls)
+        obj._value_ = value
+        obj.score = score
+        return obj
+
+    MACRO_NEWS = "Macro News", 0.4
+    COMPANY_NEWS = "News", 0.6
+    INSIDER_TRANSACTION = "Insider Transaction", 1.0
+    SEC_FILING = "SEC Filing", 0.8
 
 if __name__ == '__main__':
     DataManager(ticker="NVDA")
