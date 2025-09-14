@@ -214,10 +214,11 @@ class StockChartApp:
                 clicked_date = clickData['points'][0]['x']
                 clicked_date = date_utils.get_date(clicked_date)
                 
+                _, display_date, _ = date_utils.string_to_display(date_string=clicked_date)
                 events_on_date = self.data_manager.day_events(events=all_events, date=clicked_date)
                 event_cards = self._create_event_cards(events_on_date)
                 
-                return html.B(f"{clicked_date}"), event_cards, {'display': 'block'}
+                return html.B(f"{display_date}"), event_cards, {'display': 'block'}
             
             todays_events = self.data_manager.day_events(events=event_data_input)
             event_cards = self._create_event_cards(todays_events)

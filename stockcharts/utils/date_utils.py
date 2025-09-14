@@ -7,6 +7,7 @@ DISPLAY_DATE_FORMAT = '%b %d, %Y - %a'
 DISPLAY_TIME_FORMAT = '%H:%M'
 
 ISO_DATETIME_FORMAT = '%Y%m%dT%H%M' # 'YYYYMMDDTHHMM'
+ISO_DATETIME_WITH_SECONDS_FORMAT = '%Y%m%dT%H%M%S' # 'YYYYMMDDTHHMMSS'
 
 #########################
 # Datetime calculations #
@@ -82,7 +83,8 @@ def string_to_display(date_string: str) -> tuple[str, str, str]:
     formats_to_try = [
         "%Y-%m-%d %H:%M:%S",
         STANDARD_DATE_FORMAT,
-        ISO_DATETIME_FORMAT
+        ISO_DATETIME_FORMAT,
+        ISO_DATETIME_WITH_SECONDS_FORMAT 
     ]
     
     for fmt in formats_to_try:

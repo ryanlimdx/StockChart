@@ -280,7 +280,7 @@ class EventType(Enum):
     def name(self):
         return self._event_name
 
-    MACRO_NEWS = "Macro News", 0.4
+    MACRO_NEWS = "Macro News", 2.0 # 0.4
     COMPANY_NEWS = "News", 0.6
     INSIDER_TRANSACTION = "Insider Transaction", 1.0
     SEC_FILING = "SEC Filing", 1.0
