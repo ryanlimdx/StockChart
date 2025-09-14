@@ -1,11 +1,12 @@
 import pandas as pd
-from enum import Enum, IntEnum
+from enum import Enum
 from typing import Dict, Any, List, Generator
 from stockcharts.api.data_fetcher import DataFetcher
 from stockcharts.utils import date_utils
 from itertools import groupby
 import os
 import json
+import heapq
 
 class DataManager:
     """Handles fetching and processing of all financial data."""
@@ -276,12 +277,25 @@ class DataManager:
         all_day_events = [e for e in events if e['std_date'] == selected_date]
         return self._top_events(all_day_events)
     
-    def _top_events(self, events: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _top_events(self, events: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Filters the day's event list to the top 20."""
-        if len(events) > 20:
-            sorted_events = sorted(events, key=lambda x: int(x.get('importance_rank', 0)), reverse=True)
-            events = sorted_events[:10]
-        return events
+        if len(events) < 20:
+            return events
+        
+        top_events_heap = []
+        counter = 0
+    
+        for event in events:
+            rank = float(event.get('importance_rank', 0))
+        
+            if len(top_events_heap) < 20:
+                heapq.heappush(top_events_heap, (-rank, counter, event))
+            else:
+                heapq.heappushpop(top_events_heap, (-rank, counter, event))
+
+            counter += 1
+
+        return sorted([event for _, _, event in top_events_heap], key=lambda x: int(x.get('importance_rank', 0)), reverse=True)
     
     def clear_cache(self) -> None:
         """ Clears the stale cache."""
@@ -304,13 +318,8 @@ class DataManager:
         for news in news_events:
             news_date = news.get('std_date')
             title = news.get('title', '')
+            normalized_title = title.strip().lower()
 
-            if news_date == '2025-08-14':
-                print(f"\n[DEBUG] Processing news for date: {news_date}")
-                print(f"  > Original Title : '{title}'")
-                print(f"  > repr() of Title: {repr(title)}") # This reveals hidden characters
-                print(f"  > Length of Title: {len(title)}")
-            normalized_title = title.strip().lower() 
             key = (news_date, normalized_title)
 
             if key not in seen_news or news.get('importance_rank', 0) > seen_news[key].get('importance_rank', 0):
