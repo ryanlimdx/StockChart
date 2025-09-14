@@ -32,6 +32,11 @@ class DataFetcher:
         # APIs
         self.finnhub_client = finnhub.Client(api_key=FINNHUB_API_KEY)
     
+    def fetch_logo_async(self) -> Future:
+        """Submits the ticker icon fetching task to a thread pool."""
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            return executor.submit(self._get_ticker_icon)
+    
     def fetch_price_async(self) -> Future:
         """Submits the price fetching task to a thread pool."""
         with ThreadPoolExecutor(max_workers=1) as executor:
@@ -160,3 +165,13 @@ class DataFetcher:
         except Exception as e:
             print(f"Error fetching Finnhub insider transactions: {e}")
             return []
+        
+    def _get_ticker_icon(self) -> str:
+        """Fetches the ticker's logo URL."""
+        try:
+            profile = self.finnhub_client.company_profile2(symbol=self.ticker)
+            logo_url = profile.get('logo', '')
+            return logo_url
+        except Exception as e:
+            print(f"Error fetching Finnhub logo: {e}")
+            return ''

@@ -28,7 +28,25 @@ class StockChartApp:
                     dbc.Card(
                         dbc.CardBody(
                             [   
-                                html.P(children=f"{self.ticker} - 3 Month"),
+                                dbc.Row([
+                                    dbc.Col(
+                                        html.Div(id='logo-image', style={
+                                            'width': '24px',
+                                            'height': '24px',
+                                            'border-radius': '50%',
+                                            'background-color': '#555555', # Placeholder
+                                            'background-size': 'cover',
+                                            'background-position': 'center',
+                                            'background-repeat': 'no-repeat',
+                                            'vertical-align': 'middle',
+                                        }),
+                                        width="auto",
+                                    ),
+                                    dbc.Col(
+                                        html.P(f"{self.ticker} - 3 Month", className="mb-0 ms-2", style={'vertical-align': 'middle'}),
+                                        width="auto"
+                                    )
+                                ], className="d-flex align-items-center mb-2"),
                                 dcc.Loading(
                                     type="circle",
                                     children=dcc.Graph(id='stock-chart', style={'height': '90vh'})
@@ -75,15 +93,18 @@ class StockChartApp:
                         className="rounded-4 flex-grow-1",
                         style={'min-height': '0', 'height': '95%'}
                     ),
-                    dbc.Card(
-                        dbc.CardBody([
+                    dbc.Button(
+                        [
                             dcc.Loading(
                                 id="loading-title",
                                 type="circle",
-                                children=html.H5(id='app-name', children=html.B("StockChart"), className="text-center")
+                                children=html.H5(id='loading-title-text', children=html.B("StockChart"), className="text-center")
                             )
-                        ], className="d-flex flex-column justify-content-center align-items-center"
-                        ), className="mt-4 rounded-4", style={'flex-grow': '1'}
+                        ],
+                        id="loading-card", 
+                        n_clicks=0,
+                        className="mt-4 rounded-4", 
+                        style={'height': '5%', 'cursor': 'pointer', 'background-color': '#303030', 'border': 'none', 'color': 'white'}
                     ),
 
                 ], width=3,  style={'height': '100%', 'display': 'flex', 'flex-direction': 'column'}
@@ -170,8 +191,28 @@ class StockChartApp:
 
     def _setup_callbacks(self):
         @self.app.callback(
+            Output('logo-image', 'style'),
+            Input('loading-card', 'n_clicks'),
+        )
+        def load_logo_url(n_clicks):
+            """Loads the ticker logo URL."""
+            logo_url = self.data_manager.load_logo()
+            if logo_url:
+                return {
+                    'width': '24px',
+                    'height': '24px',
+                    'border-radius': '50%',
+                    'background-image': f'url({logo_url})',
+                    'background-size': 'cover',
+                    'background-position': 'center',
+                    'background-repeat': 'no-repeat',
+                    'vertical-align': 'middle',
+                }
+            return no_update
+        
+        @self.app.callback(
             Output('stock-chart', 'figure'),
-            Input('app-name', 'n_clicks')
+            Input('loading-card', 'n_clicks')
         )
         def load_price_chart(n_clicks):
             """This callback is triggered on page load for loading the price chart"""
@@ -182,9 +223,8 @@ class StockChartApp:
 
         @self.app.callback(
             Output('event-data-store', 'data'),
-            Output('app-name', 'children'),
-            Input('app-name', 'n_clicks'),
-            prevent_initial_call='initial_duplicate' 
+            Output('loading-title-text', 'children'),
+            Input('loading-card', 'n_clicks'),
         )
         def load_event_data(n_clicks):
             """This callback is triggered on page load for loading the events"""

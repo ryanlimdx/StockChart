@@ -16,6 +16,11 @@ class DataManager:
         self._cache_dir = "cache"
         os.makedirs(self._cache_dir, exist_ok=True)
 
+    def load_logo(self) -> str:
+        """Fetches ticker icon URL."""
+        logo_future = self.data_fetcher.fetch_logo_async()
+        return logo_future.result()
+
     def load_price_data(self) -> pd.DataFrame:
         """Fetches and cleans raw price data in parallel."""
         price_future = self.data_fetcher.fetch_price_async()
@@ -286,9 +291,9 @@ class DataManager:
         all_day_events = [e for e in events if e['std_date'] == selected_date]
         return self._top_events(all_day_events)
     
-    def _top_events(self, events: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _top_events(self, events: List[Dict[str, Any]], top: int = 20) -> List[Dict[str, Any]]:
         """Filters the day's event list to the top 20."""
-        if len(events) < 20:
+        if len(events) < top:
             return sorted(events, key=lambda x: int(x.get('importance_rank', 0)), reverse=True)
         
         top_events_heap = []
@@ -297,7 +302,7 @@ class DataManager:
         for event in events:
             rank = float(event.get('importance_rank', 0))
         
-            if len(top_events_heap) < 20:
+            if len(top_events_heap) < top:
                 heapq.heappush(top_events_heap, (rank, counter, event))
             else:
                 heapq.heappushpop(top_events_heap, (rank, counter, event))
@@ -351,7 +356,7 @@ class EventType(Enum):
     def name(self):
         return self._event_name
 
-    MACRO_NEWS = "Macro News", 2.0 # 0.4
+    MACRO_NEWS = "Macro News", 0.4
     COMPANY_NEWS = "News", 0.6
     INSIDER_TRANSACTION = "Insider Transaction", 1.0
     SEC_FILING = "SEC Filing", 1.0

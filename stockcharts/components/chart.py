@@ -12,7 +12,7 @@ class ChartBuilder:
         fig = go.Figure()
 
         hovertext_price = [
-            f"<b>{row.name.strftime('%a %b %d')}</b><br><br>"
+            f"<b>{row.name.strftime('%a, %b %d')}</b><br><br>"
             f"<b>Price:</b> <br>"
             f"<b>Open:</b> {row['Open']:.2f} USD <br>"
             f"<b>High:</b> {row['High']:.2f} USD <br>"
