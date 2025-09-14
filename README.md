@@ -84,7 +84,7 @@ python run.py --ticker=TSLA --debug
 ```
 This command will run the app for the ticker, `TSLA`, with debug mode enabled.
 
-### 📂 Project Structure
+## 📂 Project Structure
 ```
 StockChart/
 ├── stockcharts/
@@ -98,5 +98,5 @@ StockChart/
 └── run.py            # The entry point script to run the application.
 ```
 
-### 📄 License
+## 📄 License
 This project is licensed under the MIT License. See the `LICENSE` file for details.
