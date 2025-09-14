@@ -75,13 +75,22 @@ class DataManager:
     
     def _postprocess_events(self, events: Dict[str, Any]) -> Generator[Dict[str, Any], None, None]:
         """
-        Performs post-processing on all events, including deduplication and aggregation.
+        Performs post-processing on all events, including deduplication, aggregation and final cleaning.
         """
         # Collect and sort by date for more efficient processing (since processing goes by date)
         all_events = list(self._process_events(events=events))
         all_events.sort(key=lambda x: x.get('std_date'))
         
-        yield from self._deduplicate_events(all_events)
+        deduplicated_event_gen = self._deduplicate_events(all_events)
+
+        for event in deduplicated_event_gen:
+            title = event.get('title', '')
+            content = event.get('content', '')
+            if len(title) > 80:
+                event['title'] = title[:80] + '...'
+            if len(content) > 250:
+                event['content'] = content[:250] + '...'
+            yield event
 
     def _deduplicate_events(self, events: List[Dict[str, Any]]) -> Generator[Dict[str, Any], None, None]:
         """
@@ -280,7 +289,7 @@ class DataManager:
     def _top_events(self, events: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Filters the day's event list to the top 20."""
         if len(events) < 20:
-            return events
+            return sorted(events, key=lambda x: int(x.get('importance_rank', 0)), reverse=True)
         
         top_events_heap = []
         counter = 0
@@ -289,9 +298,9 @@ class DataManager:
             rank = float(event.get('importance_rank', 0))
         
             if len(top_events_heap) < 20:
-                heapq.heappush(top_events_heap, (-rank, counter, event))
+                heapq.heappush(top_events_heap, (rank, counter, event))
             else:
-                heapq.heappushpop(top_events_heap, (-rank, counter, event))
+                heapq.heappushpop(top_events_heap, (rank, counter, event))
 
             counter += 1
 
