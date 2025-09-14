@@ -60,8 +60,9 @@ class DataManager:
                 except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
                     print(f"Error reading cache file for {self.ticker}, or it's in an old format: {e}. Fetching new data.")
         self.clear_cache()
+
         raw_events = self._fetch_event_data()
-        processed_events = list(self._process_events(events=raw_events))
+        processed_events = list(self._postprocess_events(events=raw_events))
 
         data_to_save = {
             'data': processed_events,
@@ -70,10 +71,36 @@ class DataManager:
         with open(cache_path, 'w') as f:
             json.dump(data_to_save, f)
         return processed_events
+    
+    def _postprocess_events(self, events: Dict[str, Any]) -> Generator[Dict[str, Any], None, None]:
+        """
+        Performs post-processing on all events, including deduplication and aggregation.
+        """
+        # Collect and sort by date for more efficient processing (since processing goes by date)
+        all_events = list(self._process_events(events=events))
+        all_events.sort(key=lambda x: x.get('std_date'))
+        
+        yield from self._deduplicate_events(all_events)
+
+    def _deduplicate_events(self, events: List[Dict[str, Any]]) -> Generator[Dict[str, Any], None, None]:
+        """
+        Drops duplicate events by type, date, and title.
+        """
+        news_events, other_events = [], []
+        for event in events:
+            event_type = event.get('type')
+            
+            if event_type in [EventType.MACRO_NEWS.name, EventType.COMPANY_NEWS.name]:
+                news_events.append(event)
+            else:
+                other_events.append(event)
+
+        yield from other_events
+        yield from self._deduplicate_news(news_events=news_events)
 
     def _process_events(self, events: Dict[str, Any]) -> Generator[Dict[str, Any], None, None]:
         """
-        Performs data transformation, preprocessing one by one, to conform to a standard format:
+        Process events to conform to a standard format:
         {
             'std_date': the standard date format,
             'date': the display date format,
@@ -264,6 +291,32 @@ class DataManager:
             print(f"Cache file for {self.ticker} has been cleared. Please wait for the data to be refreshed.")
         else:
             print(f"No cache file found for {self.ticker} to clear.")
+
+    ####################
+    # Helper functions #
+    ####################
+
+    def _deduplicate_news(self, news_events: List[Dict[str, Any]]) -> Generator[Dict[str, Any], None, None]:
+        """
+        Deduplicates a list of news events based on date and title, keeping the one with the highest importance rank.
+        """
+        seen_news = {}
+        for news in news_events:
+            news_date = news.get('std_date')
+            title = news.get('title', '')
+
+            if news_date == '2025-08-14':
+                print(f"\n[DEBUG] Processing news for date: {news_date}")
+                print(f"  > Original Title : '{title}'")
+                print(f"  > repr() of Title: {repr(title)}") # This reveals hidden characters
+                print(f"  > Length of Title: {len(title)}")
+            normalized_title = title.strip().lower() 
+            key = (news_date, normalized_title)
+
+            if key not in seen_news or news.get('importance_rank', 0) > seen_news[key].get('importance_rank', 0):
+                seen_news[key] = news
+        
+        yield from seen_news.values()
 
 class EventType(Enum):
     """
