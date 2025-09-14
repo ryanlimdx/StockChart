@@ -6,9 +6,9 @@ import plotly.graph_objects as go
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from stockcharts.utils import date_utils
-from stockcharts.components.chart import ChartBuilder
-from stockcharts.components.data_manager import DataManager
+from stockchart.utils import date_utils
+from stockchart.components.chart import ChartBuilder
+from stockchart.components.data_manager import DataManager
 
 class StockChartApp:
     """The main application class."""
@@ -20,9 +20,10 @@ class StockChartApp:
         self._setup_callbacks()
 
     def _setup_layout(self):
+        """Set up the layout of the"""
         self.app.layout = dbc.Container([
             dcc.Store(id='event-data-store'),
-            
+            # Chart
             dbc.Row([
                 dbc.Col([
                     dbc.Card(
@@ -60,6 +61,7 @@ class StockChartApp:
                             }
                     ),
                 ], width=9,  style={'height': '100%', 'display': 'flex', 'flex-direction': 'column'}),
+                # Information panel and App card
                 dbc.Col([
                     dbc.Card(
                         dbc.CardBody(
@@ -190,6 +192,7 @@ class StockChartApp:
         return event_cards
 
     def _setup_callbacks(self):
+        """Set up necessary callbacks for interactivity."""
         @self.app.callback(
             Output('logo-image', 'style'),
             Input('loading-card', 'n_clicks'),
@@ -229,7 +232,7 @@ class StockChartApp:
         def load_event_data(n_clicks):
             """This callback is triggered on page load for loading the events"""
             force_refresh = n_clicks is not None
-            return self.data_manager.load_event_data(force_refresh=force_refresh), "StockCharts"
+            return self.data_manager.load_event_data(force_refresh=force_refresh), "StockChart"
 
         @self.app.callback(
             [
@@ -245,6 +248,7 @@ class StockChartApp:
             State('event-data-store', 'data')
         )
         def update_info_panel(event_data_input, clickData, close_clicks, all_events):
+            """This callback is triggered on refresh or pressing the close button"""
             triggered_id = ctx.triggered_id
 
             if event_data_input is None:
@@ -265,4 +269,5 @@ class StockChartApp:
             return html.B("Today"), event_cards, {'display': 'none'}
 
     def run(self, debug=True):
+        """Entry point to run the app"""
         self.app.run(debug=debug)

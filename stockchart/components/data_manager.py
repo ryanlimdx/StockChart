@@ -1,8 +1,8 @@
 import pandas as pd
 from enum import Enum
 from typing import Dict, Any, List, Generator
-from stockcharts.api.data_fetcher import DataFetcher
-from stockcharts.utils import date_utils
+from stockchart.api.data_fetcher import DataFetcher
+from stockchart.utils import date_utils
 from itertools import groupby
 import os
 import json
@@ -30,9 +30,7 @@ class DataManager:
         return price
     
     def _clean_price_data(self, price_df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Performs essential data cleaning on the raw price DataFrame.
-        """
+        """Performs essential data cleaning on the raw price DataFrame."""
         # Drop any rows with missing data
         price_df.dropna(inplace=True)
         
@@ -78,6 +76,8 @@ class DataManager:
             json.dump(data_to_save, f)
         return processed_events
     
+    # Process across all endpoints
+
     def _postprocess_events(self, events: Dict[str, Any]) -> Generator[Dict[str, Any], None, None]:
         """
         Performs post-processing on all events, including deduplication, aggregation and final cleaning.
@@ -112,6 +112,8 @@ class DataManager:
 
         yield from other_events
         yield from self._deduplicate_news(news_events=news_events)
+
+    # Processing endpoints
 
     def _process_events(self, events: Dict[str, Any]) -> Generator[Dict[str, Any], None, None]:
         """
@@ -186,6 +188,8 @@ class DataManager:
             aggregated_events.append(aggregated_event)
         
         yield from aggregated_events
+
+    # Preprocessing endpoints
 
     def _preprocess_macro_news(self, news_data: List[Dict[str, Any]]) -> Generator[Dict[str, Any], None, None]:
         """Preprocesses and yields macro news events."""
@@ -277,6 +281,8 @@ class DataManager:
                 'importance_rank': EventType.INSIDER_TRANSACTION.base_score
             }
 
+    # Fetch
+
     def _fetch_event_data(self) -> Dict[str, Any]:
         """Fetches raw event data."""
         event_futures = self.data_fetcher.fetch_events_async()
@@ -284,6 +290,8 @@ class DataManager:
         for key, future in event_futures.items():
             events[key] = future.result()
         return events
+
+    # Others
 
     def day_events(self, events: List[Dict[str, Any]], date: str = None) -> Dict[str, Any]:
         """Returns only the current date's events."""

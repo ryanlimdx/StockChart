@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from typing import Dict, Any, List, Callable
 from concurrent.futures import ThreadPoolExecutor, Future
 
-from stockcharts.utils import date_utils
+from stockchart.utils import date_utils
 
 try: 
     load_dotenv()
@@ -29,7 +29,7 @@ class DataFetcher:
         self.end_date = date_utils.now()
         self.start_date = date_utils.backdate(past_days_ago=range)
 
-        # APIs
+        # API Clients
         self.finnhub_client = finnhub.Client(api_key=FINNHUB_API_KEY)
     
     def fetch_logo_async(self) -> Future:

@@ -9,13 +9,14 @@ DISPLAY_TIME_FORMAT = '%H:%M'
 ISO_DATETIME_FORMAT = '%Y%m%dT%H%M' # 'YYYYMMDDTHHMM'
 ISO_DATETIME_WITH_SECONDS_FORMAT = '%Y%m%dT%H%M%S' # 'YYYYMMDDTHHMMSS'
 
-#########################
-# Datetime calculations #
-#########################
+# Datetime calculations
+
 def now() -> str:
+    """Return current datetime."""
     return datetime.now()
 
 def backdate(past_days_ago: int) -> str:
+    """Return a start datetime based on the period provided, counting back from current datetime."""
     return datetime.now() - timedelta(days=past_days_ago)
 
 def get_dates_in_range(start_date: datetime, end_date: datetime, batch_size: int = 7) -> List[Tuple[str, str]]:
@@ -32,16 +33,15 @@ def get_dates_in_range(start_date: datetime, end_date: datetime, batch_size: int
     return ranges
 
 def is_exceed_duration(cache_date_time: str, comparable_date_time: str, duration_h: int) -> bool:
-    """Check if the duration is exceed between 2 ISO Datetime strings"""
+    """Check if the duration is exceed between 2 ISO Datetime strings."""
     difference = datetime.strptime(comparable_date_time, ISO_DATETIME_FORMAT) - datetime.strptime(cache_date_time, ISO_DATETIME_FORMAT)
     return difference > timedelta(hours=duration_h)
 
-#########################
-# Date, time formatting #
-#########################
+# Date, time formatting
 
 @singledispatch
 def get_date(date_input: Any = None) -> str:
+    """Format the date input into a standard date string."""
     if date_input is None:
         return now().strftime(STANDARD_DATE_FORMAT)
     raise NotImplementedError(f"Cannot handle type {type(date_input)}")
@@ -59,13 +59,13 @@ def _(date_str: str) -> str:
     return get_date(date_obj)
 
 def get_ISO_date_time(date_obj: datetime) -> str:
+    """Format the date input into an ISO date string."""
     return date_obj.strftime(ISO_DATETIME_FORMAT)
 
-####################
-# Datetime display #
-####################
+# Datetime display 
 
 def unix_to_display(unix_timestamp: int) -> tuple[str, str, str]:
+    """Converts a unix timestamp to a tuple of formatted date strings"""
     date_obj = datetime.fromtimestamp(unix_timestamp)
 
     std_date = date_obj.strftime(STANDARD_DATE_FORMAT)

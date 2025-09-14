@@ -1,5 +1,7 @@
 import argparse
-from stockcharts.app import StockChartApp
+from stockchart.app import StockChartApp
+
+"""The main entry point."""
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Run the StockChart Dash application.")
